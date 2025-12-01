@@ -1,0 +1,843 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_service.dart';
+import '../services/agora_service.dart';
+import '../models/user.dart' as models;
+import 'audio_chat_screen.dart';
+import 'chat_list_screen.dart';
+import 'profile_screen.dart';
+import 'recording_screen.dart';
+import 'premium_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _firebaseService = FirebaseService();
+  final _agoraService = AgoraService();
+  int _currentIndex = 0;
+  models.UserModel? _currentUser;
+  bool _isLoading = false;
+  bool _isLoadingProfile = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      print('🔍 [HomeScreen] Loading profile for user: ${user.uid}');
+      try {
+        final profile = await _firebaseService.getUserProfile(user.uid);
+        print(
+            '📄 [HomeScreen] Profile loaded: ${profile?.displayName ?? "null"}');
+
+        if (mounted) {
+          setState(() {
+            _currentUser = profile;
+            _isLoadingProfile = false;
+          });
+        }
+
+        // Update online status
+        await _firebaseService.updateUserStatus(user.uid, true);
+        print('✅ [HomeScreen] User status updated');
+      } catch (e) {
+        print('❌ [HomeScreen] Error loading profile: $e');
+        if (mounted) {
+          setState(() => _isLoadingProfile = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading profile: ${e.toString()}')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isLoadingProfile = false);
+      }
+    }
+  }
+
+  Future<void> _startAudioPair() async {
+    if (_currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Find matching partner
+      final partner = await _firebaseService.findMatchingPartner(_currentUser!);
+
+      if (partner == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('No partners available right now. Try again later!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Navigate to audio chat
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AudioChatScreen(
+              partner: partner,
+              currentUser: _currentUser!,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildHomeTab() {
+    if (_isLoadingProfile) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Header with avatar and online count
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                  child: CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFF4A90A4),
+                    backgroundImage: _currentUser?.photoUrl != null
+                        ? NetworkImage(_currentUser!.photoUrl!)
+                        : null,
+                    child: _currentUser?.photoUrl == null
+                        ? Text(
+                            (_currentUser?.displayName != null &&
+                                    _currentUser!.displayName.isNotEmpty)
+                                ? _currentUser!.displayName[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _currentUser?.displayName ?? 'User',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Row(
+                      children: [
+                        Icon(Icons.circle, size: 8, color: Colors.green),
+                        SizedBox(width: 4),
+                        Text(
+                          '136 online',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.notifications_outlined),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Today's Goal Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Today's Goal",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Practice for 5 minutes',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Row(
+                        children: [
+                          Icon(Icons.access_time,
+                              size: 14, color: Colors.orange),
+                          SizedBox(width: 4),
+                          Text(
+                            'In progress',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            height: 70,
+                            width: 70,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 4,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${_currentUser?.totalMinutes ?? 0}m',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Random Call Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.phone_in_talk,
+                              color: Color(0xFF4A90A4), size: 24),
+                          SizedBox(width: 8),
+                          Text(
+                            'Random Call',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Filter by:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildFilterChip('Free', true),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Female', false),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Male', false),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _startAudioPair,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A90A4),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.phone, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Connect with Co-learners',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Quick Actions Grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildQuickActionCard(
+                        icon: Icons.podcasts,
+                        label: 'Pod',
+                        color: const Color(0xFF4A90A4),
+                        onTap: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildQuickActionCard(
+                        icon: Icons.local_fire_department,
+                        label: '1D',
+                        color: const Color(0xFF4A90A4),
+                        onTap: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildQuickActionCard(
+                        icon: Icons.history,
+                        label: 'History',
+                        color: const Color(0xFF4A90A4),
+                        onTap: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildQuickActionCard(
+                        icon: Icons.workspace_premium,
+                        label: 'Premium',
+                        color: const Color(0xFF4A90A4),
+                        onTap: () {
+                          // Navigate to premium screen
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Weekly Streak Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_fire_department,
+                              color: Colors.orange, size: 24),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Weekly Streak',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${_currentUser?.streakDays ?? 1}/7 Days',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange.shade800,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStreakDay('Tue', false),
+                          _buildStreakDay('Wed', false),
+                          _buildStreakDay('Thu', false),
+                          _buildStreakDay('Fri', false),
+                          _buildStreakDay('Sat', false),
+                          _buildStreakDay('Sun', true),
+                          _buildStreakDay('Mon', false),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // FAQs Section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.help_outline,
+                              color: Color(0xFF4A90A4), size: 24),
+                          SizedBox(width: 8),
+                          Text(
+                            'FAQs',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFAQItem('What is EnglishCircle?'),
+                      const Divider(),
+                      _buildFAQItem(
+                          'How does EnglishCircle help improve fluency?'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, bool selected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? const Color(0xFF4A90A4) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected ? const Color(0xFF4A90A4) : Colors.grey.shade300,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (label == 'Free')
+            Icon(
+              Icons.public,
+              size: 16,
+              color: selected ? Colors.white : Colors.grey,
+            )
+          else if (label == 'Female')
+            Icon(
+              Icons.female,
+              size: 16,
+              color: selected ? Colors.white : Colors.grey,
+            )
+          else if (label == 'Male')
+            Icon(
+              Icons.male,
+              size: 16,
+              color: selected ? Colors.white : Colors.grey,
+            ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: selected ? Colors.white : Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreakDay(String day, bool completed) {
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: completed ? Colors.orange : Colors.grey.shade200,
+          ),
+          child: completed
+              ? const Icon(
+                  Icons.local_fire_department,
+                  color: Colors.white,
+                  size: 20,
+                )
+              : null,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          day,
+          style: TextStyle(
+            fontSize: 11,
+            color: completed ? Colors.black : Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFAQItem(String question) {
+    return InkWell(
+      onTap: () {},
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                question,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screens = [
+      _buildHomeTab(),
+      const RecordingScreen(), // Vibe screen
+      _currentUser != null
+          ? ProfileScreen(userId: _currentUser!.uid)
+          : const Center(child: CircularProgressIndicator()),
+      const PremiumScreen(), // Premium screen
+      const ChatListScreen(),
+    ];
+
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildDrawer(),
+      backgroundColor: Colors.grey.shade50,
+      body: screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        selectedItemColor: const Color(0xFF4A90A4),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        elevation: 8,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.mic),
+            label: 'Vibe',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.workspace_premium),
+            label: 'Premium',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Chat',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            color: const Color(0xFF4A90A4),
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        backgroundImage: _currentUser?.photoUrl != null
+                            ? NetworkImage(_currentUser!.photoUrl!)
+                            : null,
+                        child: _currentUser?.photoUrl == null
+                            ? Text(
+                                (_currentUser?.displayName != null &&
+                                        _currentUser!.displayName.isNotEmpty)
+                                    ? _currentUser!.displayName[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Color(0xFF4A90A4),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        icon: const Icon(Icons.dark_mode_outlined,
+                            color: Colors.white),
+                        onPressed: () {
+                          // Toggle theme
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _currentUser?.displayName ?? 'User',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    _currentUser?.email ?? '',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildDrawerItem(Icons.home, 'Home', () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 0);
+                }),
+                _buildDrawerItem(Icons.person, 'Profile', () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 2);
+                }),
+                _buildDrawerItem(Icons.workspace_premium, 'Premium', () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 3);
+                }),
+                _buildDrawerItem(Icons.chat, 'Chat', () {
+                  Navigator.pop(context);
+                  setState(() => _currentIndex = 4);
+                }),
+                _buildDrawerItem(Icons.notifications, 'Notifications', () {
+                  Navigator.pop(context);
+                }),
+                const Divider(),
+                _buildDrawerItem(Icons.privacy_tip, 'Privacy policy', () {
+                  Navigator.pop(context);
+                }),
+                _buildDrawerItem(Icons.help, 'Help Center', () {
+                  Navigator.pop(context);
+                }),
+                const Divider(),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'V 5.5.0',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                _buildDrawerItem(Icons.swap_horiz, 'Switch account', () async {
+                  Navigator.pop(context);
+                  await _firebaseService.signOut();
+                  if (mounted) {
+                    Navigator.of(context).pushReplacementNamed('/login');
+                  }
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF4A90A4)),
+      title: Text(title),
+      onTap: onTap,
+    );
+  }
+
+  @override
+  void dispose() {
+    _agoraService.dispose();
+    super.dispose();
+  }
+}
