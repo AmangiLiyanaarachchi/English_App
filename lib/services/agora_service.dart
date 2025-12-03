@@ -3,8 +3,13 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class AgoraService {
-  // TODO: Replace with your actual Agora App ID from https://console.agora.io
-  static const String appId = 'YOUR_AGORA_APP_ID';
+  // Singleton instance
+  static final AgoraService _instance = AgoraService._internal();
+  factory AgoraService() => _instance;
+  AgoraService._internal();
+
+  // Agora App ID
+  static const String appId = 'ea75dc54a4aa480db3f7d5cb6eef54ed';
 
   RtcEngine? _engine;
   bool _isJoined = false;
@@ -79,34 +84,65 @@ class AgoraService {
       await initialize();
     }
 
+    // If already in a channel, leave it first
     if (_isJoined) {
+      print('Already in channel, leaving first...');
       await leaveChannel();
+      // Add small delay to ensure clean disconnect
+      await Future.delayed(const Duration(milliseconds: 500));
     }
 
     _currentChannel = channelName;
 
-    // Join channel
-    await _engine!.joinChannel(
-      token: token ??
-          '', // Use null for testing, implement token server for production
-      channelId: channelName,
-      uid: uid,
-      options: const ChannelMediaOptions(
-        channelProfile: ChannelProfileType.channelProfileCommunication,
-        clientRoleType: ClientRoleType.clientRoleBroadcaster,
-        autoSubscribeAudio: true,
-        publishMicrophoneTrack: true,
-      ),
-    );
+    try {
+      // Join channel
+      await _engine!.joinChannel(
+        token: token ??
+            '', // Use null for testing, implement token server for production
+        channelId: channelName,
+        uid: uid,
+        options: const ChannelMediaOptions(
+          channelProfile: ChannelProfileType.channelProfileCommunication,
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+          autoSubscribeAudio: true,
+          publishMicrophoneTrack: true,
+        ),
+      );
+      // Set joined flag immediately after successful join call
+      _isJoined = true;
+      print('Successfully initiated join to channel: $channelName');
+    } catch (e) {
+      print('Error joining channel: $e');
+      _currentChannel = null;
+      _isJoined = false;
+      rethrow;
+    }
   }
 
   // Leave channel
   Future<void> leaveChannel() async {
-    if (_engine == null || !_isJoined) return;
+    if (_engine == null) {
+      print('Cannot leave channel: Engine is null');
+      return;
+    }
 
-    await _engine!.leaveChannel();
-    _isJoined = false;
-    _currentChannel = null;
+    if (!_isJoined) {
+      print('Cannot leave channel: Not currently in a channel');
+      return;
+    }
+
+    try {
+      print('Leaving channel: $_currentChannel');
+      await _engine!.leaveChannel();
+      _isJoined = false;
+      _currentChannel = null;
+      print('Successfully left channel');
+    } catch (e) {
+      print('Error leaving channel: $e');
+      // Reset state even on error to allow rejoining
+      _isJoined = false;
+      _currentChannel = null;
+    }
   }
 
   // Toggle mute
@@ -119,7 +155,14 @@ class AgoraService {
 
   // Set speaker on/off
   Future<void> setSpeakerOn(bool isOn) async {
-    if (_engine == null) return;
+    if (_engine == null) {
+      print('Cannot set speaker: Engine not initialized');
+      return;
+    }
+    if (!_isJoined) {
+      print('Cannot set speaker: Not in a call');
+      return;
+    }
     await _engine!.setEnableSpeakerphone(isOn);
   }
 

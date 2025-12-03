@@ -81,6 +81,14 @@ class UserModel {
     );
   }
 
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>?;
+    if (data == null) {
+      throw Exception('Document data is null');
+    }
+    return UserModel.fromJson({...data, 'uid': doc.id});
+  }
+
   UserModel copyWith({
     String? uid,
     String? email,

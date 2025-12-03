@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'screens/google_sign_in_screen.dart';
 import 'screens/home_screen.dart';
+import 'models/message_model.dart';
+import 'models/chat_room_model.dart';
+import 'models/call_history_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +16,19 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize Hive for local chat storage
+  await Hive.initFlutter();
+
+  // Register Hive adapters
+  Hive.registerAdapter(MessageModelAdapter());
+  Hive.registerAdapter(ChatRoomModelAdapter());
+  Hive.registerAdapter(CallHistoryModelAdapter());
+
+  // Open Hive boxes
+  await Hive.openBox('messages');
+  await Hive.openBox('chatRooms');
+  await Hive.openBox<CallHistoryModel>('call_history');
 
   runApp(const MyApp());
 }

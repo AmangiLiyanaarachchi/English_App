@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firebase_service.dart';
 import '../services/agora_service.dart';
+import '../services/call_signaling_service.dart';
 import '../models/user.dart' as models;
 import 'audio_chat_screen.dart';
-import 'chat_list_screen.dart';
+import 'chats_list_screen.dart';
 import 'profile_screen.dart';
-import 'recording_screen.dart';
-import 'premium_screen.dart';
+import 'status_screen.dart';
+import 'ai_agent_page.dart';
+import 'voice_call_screen.dart';
+import 'incoming_call_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,16 +24,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _firebaseService = FirebaseService();
   final _agoraService = AgoraService();
+  final _callSignalingService = CallSignalingService();
   int _currentIndex = 0;
   models.UserModel? _currentUser;
   bool _isLoading = false;
   bool _isLoadingProfile = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  StreamSubscription? _incomingCallSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+    _listenForIncomingCalls();
   }
 
   Future<void> _loadUserProfile() async {
@@ -107,6 +115,181 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Listen for incoming calls
+  void _listenForIncomingCalls() {
+    _incomingCallSubscription =
+        _callSignalingService.listenForIncomingCalls().listen((call) {
+      if (call != null && mounted) {
+        // Show incoming call screen
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => IncomingCallScreen(call: call),
+          ),
+        );
+      }
+    });
+  }
+
+  // Start random voice call
+  Future<void> _startRandomCall() async {
+    if (_currentUser == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Show user selection dialog
+      await _showUserSelectionDialog();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Show dialog to select a user for voice call
+  Future<void> _showUserSelectionDialog() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Fetch all users except current user
+    final usersSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where(FieldPath.documentId, isNotEqualTo: currentUser.uid)
+        .limit(50)
+        .get();
+
+    if (usersSnapshot.docs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No users available for calling')),
+        );
+      }
+      return;
+    }
+
+    final users = usersSnapshot.docs
+        .map((doc) => models.UserModel.fromFirestore(doc))
+        .toList();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxHeight: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select User to Call',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
+                        child: user.photoUrl == null
+                            ? Text(
+                                user.displayName.isNotEmpty
+                                    ? user.displayName[0].toUpperCase()
+                                    : 'U',
+                              )
+                            : null,
+                      ),
+                      title: Text(
+                        user.displayName.isNotEmpty
+                            ? user.displayName
+                            : 'Unknown User',
+                      ),
+                      subtitle: Text(user.email),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _initiateCallWithUser(user);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Initiate call with selected user
+  Future<void> _initiateCallWithUser(models.UserModel otherUser) async {
+    try {
+      if (_currentUser == null) return;
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Create call
+      final call = await _callSignalingService.createCall(
+        receiverId: otherUser.uid,
+        receiverName: otherUser.displayName,
+        receiverPhotoUrl: otherUser.photoUrl ?? '',
+        callerName: _currentUser!.displayName,
+        callerPhotoUrl: _currentUser!.photoUrl ?? '',
+      );
+
+      // Join Agora channel (initialize is handled internally)
+      await _agoraService.joinChannel(call.agoraChannelId);
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Navigate to voice call screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => VoiceCallScreen(
+            call: call,
+            isOutgoing: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error initiating call: $e');
+      // Leave the channel if we joined it before the error
+      await _agoraService.leaveChannel().catchError((err) {
+        print('Error leaving channel after failed initiation: $err');
+      });
+      Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initiate call: $e')),
+        );
+      }
     }
   }
 
@@ -320,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _isLoading ? null : _startAudioPair,
+                          onPressed: _isLoading ? null : _startRandomCall,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4A90A4),
                             foregroundColor: Colors.white,
@@ -660,12 +843,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final screens = [
       _buildHomeTab(),
-      const RecordingScreen(), // Vibe screen
+      const StatusScreen(), // Status screen
       _currentUser != null
           ? ProfileScreen(userId: _currentUser!.uid)
           : const Center(child: CircularProgressIndicator()),
-      const PremiumScreen(), // Premium screen
-      const ChatListScreen(),
+      const AIAgentPage(), // AI Agent screen
+      const ChatsListScreen(), // New comprehensive chat system
     ];
 
     return Scaffold(
@@ -687,8 +870,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.mic),
-            label: 'Vibe',
+            icon: Icon(Icons.photo_library),
+            label: 'Status',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
@@ -837,6 +1020,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _incomingCallSubscription?.cancel();
     _agoraService.dispose();
     super.dispose();
   }
