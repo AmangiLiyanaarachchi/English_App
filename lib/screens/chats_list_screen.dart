@@ -230,8 +230,19 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       future: _chatService.getUserById(otherUserId),
       builder: (context, userSnapshot) {
         final user = userSnapshot.data;
-        final displayName =
-            user?.displayName ?? otherUserId.substring(0, 8) + '...';
+
+        // Fix user profile if showing as "User" or empty
+        if (user != null &&
+            (user.displayName == 'User' || user.displayName.trim().isEmpty)) {
+          // Asynchronously fix the user profile
+          _chatService.fixUserProfile(otherUserId);
+        }
+
+        final displayName = user?.displayName ??
+            (user?.email.isNotEmpty == true
+                    ? user!.email.split('@')[0]
+                    : otherUserId.substring(0, 8)) +
+                '...';
         final photoUrl = user?.photoUrl;
 
         return ListTile(

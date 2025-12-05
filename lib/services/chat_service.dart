@@ -359,10 +359,59 @@ class ChatService {
   Future<void> updateUserStatus(bool isOnline) async {
     if (currentUserId.isEmpty) return;
 
+    // Ensure user profile exists with current auth data
+    await _ensureUserProfileExists();
+
     await _firestore.collection('users').doc(currentUserId).update({
       'isOnline': isOnline,
       'lastSeen': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  // Ensure user profile exists in Firestore with proper display name and photo
+  Future<void> _ensureUserProfileExists() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+      // If user document doesn't exist or is missing critical fields, create/update it
+      if (!userDoc.exists ||
+          userDoc.data()?['displayName'] == null ||
+          userDoc.data()?['displayName'] == 'User' ||
+          userDoc.data()?['displayName']?.toString().trim().isEmpty == true) {
+        // Get display name from Firebase Auth or email
+        String displayName = user.displayName ?? '';
+        if (displayName.isEmpty || displayName == 'User') {
+          // Extract name from email if no display name
+          final email = user.email ?? '';
+          if (email.isNotEmpty) {
+            displayName = email.split('@')[0];
+            // Capitalize first letter
+            if (displayName.isNotEmpty) {
+              displayName =
+                  displayName[0].toUpperCase() + displayName.substring(1);
+            }
+          }
+        }
+
+        // Ensure we have at least some name
+        if (displayName.isEmpty) {
+          displayName = 'User';
+        }
+
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email ?? '',
+          'displayName': displayName,
+          'photoUrl': user.photoURL,
+          'isOnline': true,
+          'lastSeen': DateTime.now().millisecondsSinceEpoch,
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      print('Error ensuring user profile exists: $e');
+    }
   }
 
   // Delete a message
@@ -380,5 +429,42 @@ class ChatService {
     final cached = getCachedMessages(otherUserId);
     cached.removeWhere((m) => m.id == messageId);
     _messagesBox.put(chatId, cached);
+  }
+
+  // Fix user profile - update display name and photo from Firebase Auth
+  Future<void> fixUserProfile(String userId) async {
+    try {
+      // Get user document from Firestore
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        print('User document does not exist for $userId');
+        return;
+      }
+
+      final userData = userDoc.data();
+      final currentDisplayName = userData?['displayName'] ?? 'User';
+      final email = userData?['email'] ?? '';
+
+      // Only update if currently showing as "User" or empty
+      if (currentDisplayName == 'User' ||
+          currentDisplayName.toString().trim().isEmpty) {
+        String newDisplayName = email.isNotEmpty ? email.split('@')[0] : 'User';
+
+        // Capitalize first letter
+        if (newDisplayName.isNotEmpty && newDisplayName != 'User') {
+          newDisplayName =
+              newDisplayName[0].toUpperCase() + newDisplayName.substring(1);
+        }
+
+        await _firestore.collection('users').doc(userId).update({
+          'displayName': newDisplayName,
+        });
+
+        print('Updated user profile for $userId: $newDisplayName');
+      }
+    } catch (e) {
+      print('Error fixing user profile for $userId: $e');
+    }
   }
 }
