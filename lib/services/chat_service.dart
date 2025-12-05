@@ -430,41 +430,4 @@ class ChatService {
     cached.removeWhere((m) => m.id == messageId);
     _messagesBox.put(chatId, cached);
   }
-
-  // Fix user profile - update display name and photo from Firebase Auth
-  Future<void> fixUserProfile(String userId) async {
-    try {
-      // Get user document from Firestore
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-
-      if (!userDoc.exists) {
-        print('User document does not exist for $userId');
-        return;
-      }
-
-      final userData = userDoc.data();
-      final currentDisplayName = userData?['displayName'] ?? 'User';
-      final email = userData?['email'] ?? '';
-
-      // Only update if currently showing as "User" or empty
-      if (currentDisplayName == 'User' ||
-          currentDisplayName.toString().trim().isEmpty) {
-        String newDisplayName = email.isNotEmpty ? email.split('@')[0] : 'User';
-
-        // Capitalize first letter
-        if (newDisplayName.isNotEmpty && newDisplayName != 'User') {
-          newDisplayName =
-              newDisplayName[0].toUpperCase() + newDisplayName.substring(1);
-        }
-
-        await _firestore.collection('users').doc(userId).update({
-          'displayName': newDisplayName,
-        });
-
-        print('Updated user profile for $userId: $newDisplayName');
-      }
-    } catch (e) {
-      print('Error fixing user profile for $userId: $e');
-    }
-  }
 }

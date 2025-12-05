@@ -231,13 +231,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       builder: (context, userSnapshot) {
         final user = userSnapshot.data;
 
-        // Fix user profile if showing as "User" or empty
-        if (user != null &&
-            (user.displayName == 'User' || user.displayName.trim().isEmpty)) {
-          // Asynchronously fix the user profile
-          _chatService.fixUserProfile(otherUserId);
-        }
-
         final displayName = user?.displayName ??
             (user?.email.isNotEmpty == true
                     ? user!.email.split('@')[0]

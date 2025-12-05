@@ -294,12 +294,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       // Extract filename from Firebase URL
       final uri = Uri.parse(audioUrl);
       final pathSegments = uri.pathSegments;
-      final fileName = pathSegments.isNotEmpty
-          ? pathSegments.last
-              .split('?')
-              .first
-              .replaceAll('voice_messages%2F', '')
+      String fileName = pathSegments.isNotEmpty
+          ? pathSegments.last.split('?').first
           : 'voice_${messageId}.aac';
+
+      // Remove URL encoding and path prefixes (voice_messages%2F or voice_messages/)
+      fileName = fileName.replaceAll('voice_messages%2F', '');
+      fileName = fileName.replaceAll('voice_messages/', '');
+
+      // If still contains path separators, take only the filename
+      if (fileName.contains('/')) {
+        fileName = fileName.split('/').last;
+      }
 
       final appDir = await getApplicationDocumentsDirectory();
       final localVoiceDir = Directory('${appDir.path}/voice_messages');
