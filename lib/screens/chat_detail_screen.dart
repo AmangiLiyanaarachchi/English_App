@@ -12,7 +12,9 @@ import '../services/agora_service.dart';
 import 'voice_call_screen.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
@@ -226,31 +228,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         );
       }
 
-      // Save voice message to permanent local storage
+      // Create unique filename
+      final fileName =
+          '${_chatService.currentUserId}_${DateTime.now().millisecondsSinceEpoch}.aac';
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('voice_messages')
+          .child(fileName);
+
+      final file = File(filePath);
+      await storageRef.putFile(file);
+
+      // Get download URL
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // Save to local cache
       final appDir = await getApplicationDocumentsDirectory();
       final localVoiceDir = Directory('${appDir.path}/voice_messages');
       if (!await localVoiceDir.exists()) {
         await localVoiceDir.create(recursive: true);
       }
-
-      // Create unique filename
-      final localFileName =
-          '${_chatService.currentUserId}_${DateTime.now().millisecondsSinceEpoch}.aac';
-      final localFilePath = '${localVoiceDir.path}/$localFileName';
-
-      // Copy recorded file to permanent storage
-      final file = File(filePath);
+      final localFilePath = '${localVoiceDir.path}/$fileName';
       await file.copy(localFilePath);
 
       // Delete temporary recording file
       await file.delete();
 
-      // Send as a voice message with local file path
+      // Send message with Firebase Storage URL
       await _chatService.sendMessage(
         receiverUid: widget.otherUserId,
         text: '🎤 Voice message',
         type: 'voice',
-        mediaUrl: localFilePath, // Store local path instead of URL
+        mediaUrl: downloadUrl, // Store Firebase download URL
       );
 
       setState(() {
@@ -271,35 +282,88 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
-  Future<void> _playVoiceMessage(String messageId, String audioPath) async {
+  Future<void> _playVoiceMessage(String messageId, String audioUrl) async {
     try {
       if (_playingMessageId == messageId) {
         // Stop playing
         await _player.stopPlayer();
         setState(() => _playingMessageId = null);
-      } else {
-        // Check if local file exists
-        final localFile = File(audioPath);
+        return;
+      }
 
-        if (!await localFile.exists()) {
+      // Extract filename from Firebase URL
+      final uri = Uri.parse(audioUrl);
+      final pathSegments = uri.pathSegments;
+      final fileName = pathSegments.isNotEmpty
+          ? pathSegments.last
+              .split('?')
+              .first
+              .replaceAll('voice_messages%2F', '')
+          : 'voice_${messageId}.aac';
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final localVoiceDir = Directory('${appDir.path}/voice_messages');
+      if (!await localVoiceDir.exists()) {
+        await localVoiceDir.create(recursive: true);
+      }
+
+      final localFilePath = '${localVoiceDir.path}/$fileName';
+      final localFile = File(localFilePath);
+
+      // Check if we have it cached locally
+      if (!await localFile.exists()) {
+        // Download from Firebase Storage to local cache
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Downloading voice message...'),
+                ],
+              ),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+
+        try {
+          final response = await HttpClient().getUrl(Uri.parse(audioUrl));
+          final downloadResponse = await response.close();
+          final bytes =
+              await consolidateHttpClientResponseBytes(downloadResponse);
+          await localFile.writeAsBytes(bytes);
+
           if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          }
+        } catch (e) {
+          debugPrint('Error downloading voice message: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Voice message file not found')),
+              SnackBar(content: Text('Failed to download voice message: $e')),
             );
           }
           return;
         }
-
-        // Start playing from local file
-        await _player.startPlayer(
-          fromURI: audioPath,
-          codec: Codec.aacADTS,
-          whenFinished: () {
-            setState(() => _playingMessageId = null);
-          },
-        );
-        setState(() => _playingMessageId = messageId);
       }
+
+      // Play from local cache
+      await _player.startPlayer(
+        fromURI: localFilePath,
+        codec: Codec.aacADTS,
+        whenFinished: () {
+          setState(() => _playingMessageId = null);
+        },
+      );
+      setState(() => _playingMessageId = messageId);
     } catch (e) {
       debugPrint('Error playing voice message: $e');
       if (mounted) {

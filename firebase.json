@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"macos":{"default":{"projectId":"chatapp-40a85","appId":"1:41113287228:ios:35a4ed59949205ae98e139","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"chatapp-40a85","configurations":{"android":"1:41113287228:android:fcf875c95d66e07198e139","ios":"1:41113287228:ios:35a4ed59949205ae98e139"}}},"android":{"default":{"projectId":"chatapp-40a85","appId":"1:41113287228:android:fcf875c95d66e07198e139","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"chatapp-40a85","appId":"1:41113287228:ios:35a4ed59949205ae98e139","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "macos": {
+                "default": {
+                    "projectId": "chatapp-40a85",
+                    "appId": "1:41113287228:ios:35a4ed59949205ae98e139",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "macos/Runner/GoogleService-Info.plist"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "chatapp-40a85",
+                    "configurations": {
+                        "android": "1:41113287228:android:fcf875c95d66e07198e139",
+                        "ios": "1:41113287228:ios:35a4ed59949205ae98e139"
+                    }
+                }
+            },
+            "android": {
+                "default": {
+                    "projectId": "chatapp-40a85",
+                    "appId": "1:41113287228:android:fcf875c95d66e07198e139",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "ios": {
+                "default": {
+                    "projectId": "chatapp-40a85",
+                    "appId": "1:41113287228:ios:35a4ed59949205ae98e139",
+                    "uploadDebugSymbols": false,
+                    "fileOutput": "ios/Runner/GoogleService-Info.plist"
+                }
+            }
+        }
+    }
+}
