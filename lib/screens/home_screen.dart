@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/firebase_service.dart';
 import '../services/agora_service.dart';
 import '../services/call_signaling_service.dart';
@@ -245,6 +246,20 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (_currentUser == null) return;
 
+      // Request microphone permission first
+      final micPermission = await Permission.microphone.request();
+      if (!micPermission.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Microphone permission is required for voice calls'),
+            ),
+          );
+        }
+        return;
+      }
+
       // Show loading
       showDialog(
         context: context,
@@ -262,6 +277,9 @@ class _HomeScreenState extends State<HomeScreen> {
         callerName: _currentUser!.displayName,
         callerPhotoUrl: _currentUser!.photoUrl ?? '',
       );
+
+      print(
+          '📤 HOME: Call created, joining Agora channel: ${call.agoraChannelId}');
 
       // Join Agora channel (initialize is handled internally)
       await _agoraService.joinChannel(call.agoraChannelId);

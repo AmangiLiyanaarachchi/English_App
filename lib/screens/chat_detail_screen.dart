@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
 import '../services/chat_service.dart';
@@ -262,6 +263,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(
           radius: 16,
@@ -277,7 +279,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               : null,
         ),
         const SizedBox(width: 12),
-        Expanded(
+        Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -600,6 +602,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     if (_otherUser == null) return;
 
     try {
+      // Request microphone permission first
+      final micPermission = await Permission.microphone.request();
+      if (!micPermission.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission is required for voice calls'),
+          ),
+        );
+        return;
+      }
+
       // Show loading
       showDialog(
         context: context,

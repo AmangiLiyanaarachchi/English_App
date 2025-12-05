@@ -73,12 +73,21 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
             _isCallConnected = true;
           });
           _startDurationTimer();
-          // Enable speaker after connection
-          _agoraService.setSpeakerOn(true).catchError((e) {
-            print('Error setting speaker: $e');
+          // Enable speaker after connection with proper delay
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (mounted) {
+              _agoraService.setSpeakerOn(true);
+              setState(() {
+                _isSpeakerOn = true;
+              });
+            }
           });
         }
       });
+
+      // Set initial audio route to speaker immediately after initialization
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _agoraService.setSpeakerOn(true);
 
       // Set initial status
       if (widget.isOutgoing) {
@@ -98,11 +107,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
           _isCallConnected = true;
         });
         _startDurationTimer();
-        // Enable speaker after connection for incoming calls
-        await Future.delayed(const Duration(milliseconds: 500));
-        await _agoraService.setSpeakerOn(true).catchError((e) {
-          print('Error setting speaker: $e');
-        });
       }
     } catch (e) {
       print('Error initializing call: $e');

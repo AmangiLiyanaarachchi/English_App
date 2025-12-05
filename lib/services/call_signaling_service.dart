@@ -26,6 +26,11 @@ class CallSignalingService {
         '${currentUser.uid}_${DateTime.now().millisecondsSinceEpoch}';
     final agoraChannelId = _generateChannelId(currentUser.uid, receiverId);
 
+    print('📞 CALL: Creating call with ID: $callId');
+    print('📞 CALL: Caller: ${currentUser.uid}');
+    print('📞 CALL: Receiver: $receiverId');
+    print('📞 CALL: Agora Channel: "$agoraChannelId"');
+
     final call = CallModel(
       callId: callId,
       callerId: currentUser.uid,
@@ -61,9 +66,23 @@ class CallSignalingService {
       if (snapshot.docs.isEmpty) {
         return null;
       }
-      // Return the most recent call
+      // Return the most recent call only if it's within the last 30 seconds
       final doc = snapshot.docs.first;
-      return CallModel.fromMap(doc.data());
+      final call = CallModel.fromMap(doc.data());
+
+      // Check if call is recent (within 30 seconds)
+      final now = DateTime.now();
+      final callAge = now.difference(call.timestamp).inSeconds;
+
+      if (callAge > 30) {
+        // Call is too old, mark as missed and don't show
+        _firestore.collection('calls').doc(call.callId).update({
+          'status': 'missed',
+        });
+        return null;
+      }
+
+      return call;
     });
   }
 
@@ -130,7 +149,11 @@ class CallSignalingService {
   // Generate channel ID for Agora
   String _generateChannelId(String userId1, String userId2) {
     final ids = [userId1, userId2]..sort();
-    return '${ids[0]}_${ids[1]}';
+    final channelId = '${ids[0]}_${ids[1]}';
+    print('🎬 CHANNEL: Generated channel ID: "$channelId"');
+    print('🎬 CHANNEL: From users: $userId1 + $userId2');
+    print('🎬 CHANNEL: Sorted: ${ids[0]} + ${ids[1]}');
+    return channelId;
   }
 
   // Check if there's an active call for the user

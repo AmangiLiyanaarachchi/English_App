@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/call_model.dart';
 import '../services/call_signaling_service.dart';
 import '../services/agora_service.dart';
 import '../services/call_history_service.dart';
+import '../services/ringtone_service.dart';
 import '../models/call_history_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'voice_call_screen.dart';
@@ -41,11 +44,15 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+
+    // Play ringtone
+    RingtoneService.playRingtone();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    RingtoneService.stopRingtone();
     super.dispose();
   }
 
@@ -57,8 +64,31 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     });
 
     try {
+      // Stop ringtone
+      RingtoneService.stopRingtone();
+
+      // Request microphone permission before accepting
+      final micPermission = await Permission.microphone.request();
+      if (!micPermission.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Microphone permission is required for voice calls'),
+            ),
+          );
+        }
+        setState(() {
+          _isProcessing = false;
+        });
+        return;
+      }
+
       // Accept the call in Firestore
       await _signalingService.acceptCall(widget.call.callId);
+
+      print(
+          '📥 INCOMING: Call accepted, joining Agora channel: ${widget.call.agoraChannelId}');
 
       // Join Agora channel (initialize is handled internally)
       await _agoraService.joinChannel(widget.call.agoraChannelId);
@@ -99,6 +129,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
     });
 
     try {
+      // Stop ringtone
+      RingtoneService.stopRingtone();
+
       // Reject the call
       await _signalingService.rejectCall(widget.call.callId);
 
