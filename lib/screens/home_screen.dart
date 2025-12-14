@@ -1,19 +1,22 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:english_circle/screens/ai_agent_page.dart';
+import 'package:english_circle/screens/premium_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../services/firebase_service.dart';
+
+import '../models/user.dart' as models;
 import '../services/agora_service.dart';
 import '../services/call_signaling_service.dart';
-import '../models/user.dart' as models;
+import '../services/firebase_service.dart';
 import 'audio_chat_screen.dart';
 import 'chats_list_screen.dart';
+import 'incoming_call_screen.dart';
 import 'profile_screen.dart';
 import 'status_screen.dart';
-import 'ai_agent_page.dart';
 import 'voice_call_screen.dart';
-import 'incoming_call_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +35,18 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingProfile = true;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription? _incomingCallSubscription;
+  bool _hasAI(models.UserModel user) {
+    return user.package == "AI Agent" || user.package == "Community + AI Agent";
+  }
+
+  bool _hasCommunity(models.UserModel user) {
+    return user.package == "Community Plan" ||
+        user.package == "Community + AI Agent";
+  }
+
+  bool _hasPackage(models.UserModel user) {
+    return user.package != null && user.package!.isNotEmpty;
+  }
 
   @override
   void initState() {
@@ -859,14 +874,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // final screens = [
+    //   _buildHomeTab(),
+    //   const StatusScreen(), // Status screen
+    //   _currentUser != null
+    //       ? ProfileScreen(userId: _currentUser!.uid)
+    //       : const Center(child: CircularProgressIndicator()),
+    //   const AIAgentPage(), // AI Agent screen
+    //   //const PremiumScreen(),
+    //   const ChatsListScreen(), // New comprehensive chat system
+    // ];
     final screens = [
+      // 0️⃣ Home → ALWAYS allowed
       _buildHomeTab(),
-      const StatusScreen(), // Status screen
+
+      // 1️⃣ Status → Community only + must have package
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasCommunity(_currentUser!)
+          ? const StatusScreen()
+          : const PremiumScreen(),
+
+      // 2️⃣ Profile → ALWAYS allowed
       _currentUser != null
           ? ProfileScreen(userId: _currentUser!.uid)
           : const Center(child: CircularProgressIndicator()),
-      const AIAgentPage(), // AI Agent screen
-      const ChatsListScreen(), // New comprehensive chat system
+
+      // 3️⃣ AI Agent → AI only + must have package
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasAI(_currentUser!)
+          ? const AIAgentPage()
+          : const PremiumScreen(),
+
+      // 4️⃣ Chat → Community only + must have package
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasCommunity(_currentUser!)
+          ? const ChatsListScreen()
+          : const PremiumScreen(),
     ];
 
     return Scaffold(

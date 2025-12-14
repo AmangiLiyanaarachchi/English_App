@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:english_circle/screens/premium_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/firebase_service.dart';
-import '../models/user.dart' as models;
+import 'package:flutter/material.dart';
+
 import '../models/recording.dart';
+import '../models/user.dart' as models;
+import '../services/firebase_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -30,13 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     print('📱 [ProfileScreen] _loadProfile started');
-    
+
     if (widget.userId.isEmpty) {
       print('❌ [ProfileScreen] Cannot load profile: userId is empty');
       // Even with empty userId, create a basic profile from current user
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && mounted) {
-        print('✅ [ProfileScreen] Creating profile from Firebase Auth (empty userId)');
+        print(
+            '✅ [ProfileScreen] Creating profile from Firebase Auth (empty userId)');
         setState(() {
           _userProfile = models.UserModel(
             uid: user.uid,
@@ -59,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
       return;
     }
-    
+
     try {
       print('📡 [ProfileScreen] Fetching from Firestore...');
       final profile = await _firebaseService.getUserProfile(widget.userId);
@@ -70,11 +73,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     } catch (e) {
       print('⚠️ [ProfileScreen] Error loading from Firestore: $e');
       print('📱 [ProfileScreen] Using Firebase Auth data as fallback');
-      
+
       // Fallback to Firebase Auth user data if Firestore fails
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && mounted) {
-        print('✅ [ProfileScreen] Creating fallback profile for: ${user.displayName}');
+        print(
+            '✅ [ProfileScreen] Creating fallback profile for: ${user.displayName}');
         setState(() {
           _userProfile = models.UserModel(
             uid: user.uid,
@@ -597,7 +601,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildMenuItem(IconData icon, String title, String subtitle,
-      IconData trailingIcon, Color color, {bool isSignOut = false}) {
+      IconData trailingIcon, Color color,
+      {bool isSignOut = false}) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8),
       leading: Container(
@@ -634,7 +639,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         } else if (title == 'Rate us') {
           // Rate
         } else if (title == 'Join Premium Today') {
-          // Premium
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const PremiumScreen(),
+            ),
+          );
         }
       },
     );

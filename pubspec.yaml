@@ -49,6 +49,7 @@ dependencies:
   
   # WebView for AI Agent
   flutter_inappwebview: ^6.0.0
+  country_picker: ^2.0.27
 
 dev_dependencies:
   flutter_test:
