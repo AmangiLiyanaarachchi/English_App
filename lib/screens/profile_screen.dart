@@ -22,6 +22,28 @@ class _ProfileScreenState extends State<ProfileScreen>
   List<Recording> _recordings = [];
   TabController? _tabController;
 
+  bool _hasAI(models.UserModel user) {
+    return user.package == "AI Agent" || user.package == "Community + AI Agent";
+  }
+
+  bool _hasCommunity(models.UserModel user) {
+    return user.package == "Community Plan" ||
+        user.package == "Community + AI Agent";
+  }
+
+  bool _hasPackage(models.UserModel user) {
+    return user.package != null && user.package!.isNotEmpty;
+  }
+
+  bool _shouldShowPremiumInProfile() {
+    if (_userProfile == null) return false;
+    if (!_hasPackage(_userProfile!)) {
+      return true; // No package at all
+    }
+    // Show in profile if both community and AI are not active
+    return !_hasCommunity(_userProfile!) && !_hasAI(_userProfile!);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -535,13 +557,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildMenuItem(
-                    Icons.workspace_premium,
-                    'Join Premium Today',
-                    'Find your perfect match, feel the difference',
-                    Icons.shopping_bag,
-                    const Color(0xFF4A90A4),
-                  ),
+                  // Only show "Join Premium Today" if premium should NOT be shown at bottom
+                  if (!_shouldShowPremiumInProfile())
+                    _buildMenuItem(
+                      Icons.workspace_premium,
+                      'Join Premium Today',
+                      'Find your perfect match, feel the difference',
+                      Icons.shopping_bag,
+                      const Color(0xFF4A90A4),
+                    ),
                   _buildMenuItem(
                     Icons.share,
                     'Share',
@@ -575,6 +599,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ],
               ),
             ),
+
+            // Premium Plan Details Section (show at bottom when both plans inactive)
+            if (_shouldShowPremiumInProfile()) ...[
+              const SizedBox(height: 16),
+              _buildPremiumDetailsSection(),
+            ],
           ],
         ),
       ),
@@ -646,6 +676,177 @@ class _ProfileScreenState extends State<ProfileScreen>
           );
         }
       },
+    );
+  }
+
+  Widget _buildPremiumDetailsSection() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.workspace_premium,
+                color: Color(0xFF4A90A4),
+                size: 28,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Unlock Premium Features',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4A90A4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Get access to exclusive features and enhance your English learning experience!',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Community Plan Features
+          _buildPlanCard(
+            'Community Plan',
+            'Connect with learners worldwide',
+            [
+              'Access to Community Chat',
+              'Connect with English learners',
+              'Share your progress',
+              'Post and view Status updates',
+            ],
+            Icons.people,
+            const Color(0xFF2A9D8F),
+          ),
+          const SizedBox(height: 16),
+
+          // AI Agent Features
+          _buildPlanCard(
+            'AI Agent',
+            'Personal AI English coach',
+            [
+              'AI-powered English coach',
+              'Personalized learning tips',
+              'Grammar corrections',
+              '24/7 AI assistance',
+            ],
+            Icons.smart_toy,
+            const Color(0xFF4A90A4),
+          ),
+          const SizedBox(height: 24),
+
+          // Call to action button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PremiumScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A90A4),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'View Plans & Subscribe',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanCard(
+    String title,
+    String subtitle,
+    List<String> features,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.05),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...features.map((feature) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 18,
+                      color: color,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
     );
   }
 

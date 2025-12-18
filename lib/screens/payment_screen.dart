@@ -3,6 +3,8 @@ import 'package:country_picker/country_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
+import '../services/payhere_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String selectedPlan;
@@ -21,25 +23,66 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  final _formKey = GlobalKey<FormState>();
-
   final TextEditingController cardNumberController = TextEditingController();
   final TextEditingController expiryController = TextEditingController();
   final TextEditingController cvvController = TextEditingController();
   final TextEditingController contactNumberController = TextEditingController();
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
 
   String selectedCountryCode = "+94";
   String selectedFlag = "🇱🇰";
+  bool isProcessing = false;
 
   final Color paleBlue = const Color(0xFFE9F1F4);
   final Color blueColor = const Color(0xFF4A90A4);
 
   final Map<String, String?> errorMessages = {
+    "firstName": null,
+    "lastName": null,
+    "email": null,
     "cardNumber": null,
     "expiry": null,
     "cvv": null,
     "phone": null,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // Load user data from Firebase
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        setState(() {
+          firstNameController.text = data?['firstName'] ?? '';
+          lastNameController.text = data?['lastName'] ?? '';
+          emailController.text = user.email ?? '';
+
+          if (data?['phone'] != null && data!['phone'].toString().isNotEmpty) {
+            String phone = data['phone'].toString();
+            if (phone.startsWith('+94')) {
+              selectedCountryCode = '+94';
+              contactNumberController.text = phone.substring(3);
+            } else {
+              contactNumberController.text = phone;
+            }
+          }
+        });
+      }
+    }
+  }
 
   // -----------------------------------------------------
   //                   VALIDATIONS
@@ -221,7 +264,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
+                    color: Colors.black.withAlpha(25),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   )
@@ -229,6 +272,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               child: Column(
                 children: [
+                  // First Name
+                  buildInputField(
+                    label: "First Name",
+                    keyName: "firstName",
+                    inputWidget: styledTextboxWithFocus(
+                      controller: firstNameController,
+                      hint: "Enter first name",
+                    ),
+                  ),
+
+                  // Last Name
+                  buildInputField(
+                    label: "Last Name",
+                    keyName: "lastName",
+                    inputWidget: styledTextboxWithFocus(
+                      controller: lastNameController,
+                      hint: "Enter last name",
+                    ),
+                  ),
+
+                  // Email
+                  buildInputField(
+                    label: "Email",
+                    keyName: "email",
+                    inputWidget: styledTextboxWithFocus(
+                      controller: emailController,
+                      hint: "example@email.com",
+                    ),
+                  ),
+
                   // Card Number
                   buildInputField(
                     label: "Card Number",
@@ -332,15 +405,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     height: 55,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: blueColor,
+                        backgroundColor: isProcessing ? Colors.grey : blueColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      onPressed: processPayment,
-                      child: const Text("PAY NOW",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      onPressed: isProcessing ? null : processPayment,
+                      child: isProcessing
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text("PAY NOW",
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -356,24 +431,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
   //                 FINAL PAYMENT LOGIC
   // -----------------------------------------------------
   void processPayment() async {
+    if (isProcessing) return;
+
     setState(() {
       errorMessages.updateAll((key, value) => null);
     });
 
-    String card = cardNumberController.text.replaceAll(" ", "");
-    String expiry = expiryController.text.trim();
-    String cvv = cvvController.text.trim();
+    // Validate all fields
+    String firstName = firstNameController.text.trim();
+    String lastName = lastNameController.text.trim();
+    String email = emailController.text.trim();
     String phone = contactNumberController.text.trim();
 
     bool valid = true;
 
-    if (!validateExpiry(expiry)) {
-      errorMessages["expiry"] = "Invalid or expired date";
+    if (firstName.isEmpty) {
+      errorMessages["firstName"] = "First name is required";
       valid = false;
     }
 
-    if (!validateCVV(cvv)) {
-      errorMessages["cvv"] = "CVV must be 3 digits";
+    if (lastName.isEmpty) {
+      errorMessages["lastName"] = "Last name is required";
+      valid = false;
+    }
+
+    if (email.isEmpty ||
+        !RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      errorMessages["email"] = "Enter a valid email";
       valid = false;
     }
 
@@ -390,7 +474,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("User not logged in"),
           backgroundColor: Colors.red,
         ),
@@ -398,53 +482,269 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
+    setState(() {
+      isProcessing = true;
+    });
+
     String userId = user.uid;
+    String orderId = "ORDER_${DateTime.now().millisecondsSinceEpoch}";
+    String fullPhone = "$selectedCountryCode$phone";
 
-    DateTime expiryDate;
+    // 🧪 TEST MODE: Bypassing PayHere due to Merchant ID verification issues
+    // PayHere sandbox requires merchant account activation for mobile SDK
+    // Test mode: Saves to Firestore, unlocks features, fully functional for development
+    const bool testMode =
+        true; // Set to false when using verified live PayHere account
 
-    if (widget.selectedDuration.toLowerCase().contains("week")) {
-      expiryDate = DateTime.now().add(Duration(days: 7));
-    } else {
-      expiryDate = DateTime.now().add(Duration(days: 180));
+    if (testMode) {
+      // Simulate payment delay
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Simulate successful payment
+      String testPaymentId = "TEST_${DateTime.now().millisecondsSinceEpoch}";
+      await _handlePaymentSuccess(userId, orderId, testPaymentId);
+      return;
     }
 
-    // --- Update USERS table ---
-    await FirebaseFirestore.instance.collection("users").doc(userId).update({
-      "package": widget.selectedPlan,
-      "duration": widget.selectedDuration,
-      "price": widget.price,
-      "paymentStatus": "paid",
-      "expiryDate": expiryDate,
-      "phone": "${selectedCountryCode}${contactNumberController.text}",
-      "updatedAt": FieldValue.serverTimestamp(),
-    });
+    try {
+      // Create PayHere payment request
+      Map<String, dynamic> paymentObject = PayHereService.createPaymentRequest(
+        orderId: orderId,
+        customerFirstName: firstName,
+        customerLastName: lastName,
+        customerEmail: email,
+        customerPhone: fullPhone,
+        planName: widget.selectedPlan,
+        amount: widget.price,
+        currency: "LKR",
+      );
 
-    // --- Add PAYMENT record ---
-    await FirebaseFirestore.instance.collection("payments").add({
-      "userId": userId,
-      "plan": widget.selectedPlan,
-      "duration": widget.selectedDuration,
-      "amount": widget.price,
-      "currency": "LKR",
-      "status": "paid",
-      "createdAt": FieldValue.serverTimestamp(),
-    });
+      // Debug: Print payment object
+      debugPrint("💳 Payment Object: $paymentObject");
 
-    // --- SHOW SUCCESS DIALOG ---
+      // Start payment using PayHere SDK
+      PayHere.startPayment(
+        paymentObject,
+        (paymentId) async {
+          // Payment success callback
+          debugPrint("Payment Success. Payment Id: $paymentId");
+          await _handlePaymentSuccess(userId, orderId, paymentId);
+        },
+        (error) {
+          // Payment error callback
+          debugPrint("Payment Error: $error");
+          setState(() {
+            isProcessing = false;
+          });
+          _showErrorDialog("Payment Failed", error);
+        },
+        () {
+          // Payment dismissed callback
+          debugPrint("Payment Dismissed");
+          setState(() {
+            isProcessing = false;
+          });
+        },
+      );
+    } catch (e) {
+      debugPrint("Error initiating payment: $e");
+      setState(() {
+        isProcessing = false;
+      });
+      _showErrorDialog("Error", "Failed to initiate payment: $e");
+    }
+  }
+
+  // Handle successful payment
+  Future<void> _handlePaymentSuccess(
+      String userId, String orderId, String paymentId) async {
+    try {
+      DateTime expiryDate;
+
+      if (widget.selectedDuration.toLowerCase().contains("week")) {
+        expiryDate = DateTime.now().add(const Duration(days: 7));
+      } else {
+        expiryDate = DateTime.now().add(const Duration(days: 30));
+      }
+
+      // Get unlocked features based on plan
+      List<String> unlockedFeatures =
+          PayHereService.getUnlockedFeatures(widget.selectedPlan);
+
+      // --- Read existing subscriptions ---
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .get();
+      final existingData = userDoc.data() ?? {};
+
+      // Get existing subscriptions map or create new one
+      Map<String, dynamic> subscriptions = {};
+      if (existingData['subscriptions'] != null &&
+          existingData['subscriptions'] is Map) {
+        subscriptions =
+            Map<String, dynamic>.from(existingData['subscriptions']);
+      }
+
+      // Add/Update this plan's subscription with its expiry date
+      // Check which features this plan includes
+      List<String> currentPurchaseFeatures = [];
+
+      if (widget.selectedPlan.contains("Community")) {
+        subscriptions['community'] = {
+          'expiryDate': expiryDate,
+          'plan': widget.selectedPlan,
+          'duration': widget.selectedDuration,
+          'price': widget.price,
+        };
+        currentPurchaseFeatures.add('community');
+      }
+      if (widget.selectedPlan.contains("AI Agent")) {
+        subscriptions['ai_agent'] = {
+          'expiryDate': expiryDate,
+          'plan': widget.selectedPlan,
+          'duration': widget.selectedDuration,
+          'price': widget.price,
+        };
+        currentPurchaseFeatures.add('ai_agent');
+      }
+
+      // Build complete unlocked features list from all active subscriptions
+      List<String> allUnlockedFeatures = [];
+      subscriptions.forEach((key, value) {
+        if (value is Map && value['expiryDate'] != null) {
+          // Handle both Timestamp (from Firestore) and DateTime (from current session)
+          DateTime expiry;
+          if (value['expiryDate'] is Timestamp) {
+            expiry = (value['expiryDate'] as Timestamp).toDate();
+          } else if (value['expiryDate'] is DateTime) {
+            expiry = value['expiryDate'] as DateTime;
+          } else {
+            return; // Skip if not a valid date type
+          }
+
+          if (expiry.isAfter(DateTime.now())) {
+            // This subscription is still active
+            if (key == 'community' &&
+                !allUnlockedFeatures.contains('community')) {
+              allUnlockedFeatures.add('community');
+            }
+            if (key == 'ai_agent' &&
+                !allUnlockedFeatures.contains('ai_agent')) {
+              allUnlockedFeatures.add('ai_agent');
+            }
+          }
+        }
+      });
+
+      // Ensure current purchase features are included (safety check)
+      for (var feature in currentPurchaseFeatures) {
+        if (!allUnlockedFeatures.contains(feature)) {
+          allUnlockedFeatures.add(feature);
+        }
+      }
+
+      print('🔥 Current purchase: ${widget.selectedPlan}');
+      print('🔥 Current purchase features: $currentPurchaseFeatures');
+      print('🔥 All subscriptions: ${subscriptions.keys.toList()}');
+      print('🔥 All unlocked features: $allUnlockedFeatures');
+
+      // Determine display package name
+      String packageName = widget.selectedPlan;
+      if (allUnlockedFeatures.contains('community') &&
+          allUnlockedFeatures.contains('ai_agent')) {
+        packageName = "Community + AI Agent";
+      } else if (allUnlockedFeatures.contains('community')) {
+        packageName = "Community Plan";
+      } else if (allUnlockedFeatures.contains('ai_agent')) {
+        packageName = "AI Agent";
+      }
+
+      // --- Update USERS table ---
+      await FirebaseFirestore.instance.collection("users").doc(userId).update({
+        "package": packageName, // Display package name
+        "subscriptions": subscriptions, // Individual subscription tracking
+        "duration": widget.selectedDuration,
+        "price": widget.price,
+        "paymentStatus": "paid",
+        "expiryDate": expiryDate, // Latest expiry date
+        "phone": "$selectedCountryCode${contactNumberController.text}",
+        "unlockedFeatures": allUnlockedFeatures, // All active features
+        "firstName": firstNameController.text.trim(),
+        "lastName": lastNameController.text.trim(),
+        "updatedAt": FieldValue.serverTimestamp(),
+      });
+
+      // --- Add PAYMENT record ---
+      await FirebaseFirestore.instance.collection("payments").add({
+        "userId": userId,
+        "orderId": orderId,
+        "paymentId": paymentId,
+        "plan": widget.selectedPlan,
+        "duration": widget.selectedDuration,
+        "amount": widget.price,
+        "currency": "LKR",
+        "status": "paid",
+        "unlockedFeatures": unlockedFeatures,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        isProcessing = false;
+      });
+
+      // --- SHOW SUCCESS DIALOG ---
+      _showSuccessDialog(allUnlockedFeatures);
+    } catch (e) {
+      debugPrint("Error saving payment data: $e");
+      setState(() {
+        isProcessing = false;
+      });
+      _showErrorDialog(
+          "Error", "Payment successful but failed to update records: $e");
+    }
+  }
+
+  // Show success dialog
+  void _showSuccessDialog(List<String> unlockedFeatures) {
+    String featuresText = unlockedFeatures.map((feature) {
+      if (feature == "community") return "Community Plan";
+      if (feature == "ai_agent") return "AI Agent";
+      return feature;
+    }).join(" + ");
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Payment Successful"),
+        title: const Text("Payment Successful! 🎉"),
         content: Text(
-          "Payment successfully. Now you have access for ${widget.selectedPlan}!",
+          "Congratulations! You now have access to:\n\n$featuresText\n\nEnjoy your premium features!",
         ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Close payment screen
+              Navigator.pop(context); // Close premium screen
             },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
             child: const Text("OK"),
           ),
         ],
@@ -464,7 +764,7 @@ class ExpiryDateFormatter extends TextInputFormatter {
     String formatted = "";
 
     if (digits.length >= 3) {
-      formatted = digits.substring(0, 2) + "/" + digits.substring(2);
+      formatted = '${digits.substring(0, 2)}/${digits.substring(2)}';
     } else {
       formatted = digits;
     }

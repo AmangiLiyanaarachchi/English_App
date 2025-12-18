@@ -50,6 +50,10 @@ dependencies:
   # WebView for AI Agent
   flutter_inappwebview: ^6.0.0
   country_picker: ^2.0.27
+  
+  # PayHere Payment Gateway
+  payhere_mobilesdk_flutter: ^3.0.8
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:

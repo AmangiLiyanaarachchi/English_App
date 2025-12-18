@@ -101,5 +101,18 @@ service cloud.firestore {
       // Anyone authenticated can update (for views and comments)
       allow update: if request.auth != null;
     }
+    
+    // ================================
+    // PAYMENTS COLLECTION (Premium Subscriptions)
+    // ================================
+    match /payments/{paymentId} {
+      // Users can read their own payment records
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      
+      // Users can create payment records for themselves
+      allow create: if request.auth != null && 
+                       request.auth.uid == request.resource.data.userId;
+    }
   }
 }

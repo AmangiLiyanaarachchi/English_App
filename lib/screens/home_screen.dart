@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:english_circle/screens/ai_agent_page.dart';
 import 'package:english_circle/screens/premium_screen.dart';
+import 'package:english_circle/services/premium_access_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -46,6 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _hasPackage(models.UserModel user) {
     return user.package != null && user.package!.isNotEmpty;
+  }
+
+  // Handle tab navigation - no dialogs, just show premium screen in-tab
+  void _handleTabNavigation(int index) {
+    setState(() => _currentIndex = index);
   }
 
   @override
@@ -922,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: _handleTabNavigation,
         selectedItemColor: const Color(0xFF4A90A4),
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
@@ -943,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.workspace_premium),
-            label: 'Premium',
+            label: 'AIagent',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
@@ -1029,7 +1035,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   setState(() => _currentIndex = 2);
                 }),
-                _buildDrawerItem(Icons.workspace_premium, 'Premium', () {
+                _buildDrawerItem(Icons.workspace_premium, 'AIagent', () {
                   Navigator.pop(context);
                   setState(() => _currentIndex = 3);
                 }),

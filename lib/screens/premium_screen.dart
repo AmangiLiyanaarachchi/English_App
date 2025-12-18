@@ -21,7 +21,102 @@ class _PremiumScreenState extends State<PremiumScreen> {
   final TextEditingController studentIdController = TextEditingController();
   bool isSubmitting = false;
 
+  // Active subscription info
+  String? activePackage;
+  DateTime? expiryDate;
+  bool isLoading = true;
+
+  // Individual subscription tracking
+  Map<String, dynamic>? activeSubscriptions;
+  bool hasCommunity = false;
+  bool hasAIAgent = false;
+  DateTime? communityExpiry;
+  DateTime? aiAgentExpiry;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActiveSubscription();
+  }
+
+  Future<void> _loadActiveSubscription() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final data = userDoc.data();
+          activePackage = data?['package'];
+
+          // Check individual subscriptions
+          final subscriptions = data?['subscriptions'];
+          if (subscriptions != null && subscriptions is Map) {
+            activeSubscriptions = Map<String, dynamic>.from(subscriptions);
+
+            // Check Community subscription
+            if (subscriptions['community'] != null) {
+              final commSub = subscriptions['community'];
+              if (commSub['expiryDate'] != null) {
+                DateTime expiry = (commSub['expiryDate'] as Timestamp).toDate();
+                if (expiry.isAfter(DateTime.now())) {
+                  hasCommunity = true;
+                  communityExpiry = expiry;
+                }
+              }
+            }
+
+            // Check AI Agent subscription
+            if (subscriptions['ai_agent'] != null) {
+              final aiSub = subscriptions['ai_agent'];
+              if (aiSub['expiryDate'] != null) {
+                DateTime expiry = (aiSub['expiryDate'] as Timestamp).toDate();
+                if (expiry.isAfter(DateTime.now())) {
+                  hasAIAgent = true;
+                  aiAgentExpiry = expiry;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading subscription: $e");
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  bool _isPlanDisabled(String planName) {
+    // If Community OR AI Agent is active → Disable "Community + AI Agent"
+    if (planName == "Community + AI Agent") {
+      return hasCommunity || hasAIAgent;
+    }
+
+    // If both Community AND AI Agent are active → Disable "Community Plan"
+    if (planName == "Community Plan") {
+      return hasCommunity && hasAIAgent;
+    }
+
+    // If both Community AND AI Agent are active → Disable "AI Agent"
+    if (planName == "AI Agent") {
+      return hasCommunity && hasAIAgent;
+    }
+
+    return false;
+  }
+
   void _choosePlan(String plan) {
+    if (_isPlanDisabled(plan)) {
+      _showPlanDisabledDialog(plan);
+      return;
+    }
+
     setState(() {
       if (selectedPlan == plan) {
         selectedPlan = "";
@@ -33,6 +128,46 @@ class _PremiumScreenState extends State<PremiumScreen> {
         selectedPrice = 0;
       }
     });
+  }
+
+  void _showPlanDisabledDialog(String planName) {
+    String message = "";
+
+    if (planName == "Community + AI Agent") {
+      message = "You already have active subscription(s):\n\n";
+      if (hasCommunity) {
+        message +=
+            "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
+      }
+      if (hasAIAgent) {
+        message +=
+            "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n";
+      }
+      message +=
+          "\nThe combo plan is disabled until your existing plans expire.";
+    } else {
+      message = "You already have both plans active:\n\n";
+      message +=
+          "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
+      message +=
+          "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n\n";
+      message +=
+          "Individual plan purchase is disabled until one of them expires.";
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Plan Not Available"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _chooseDuration(String plan, String duration, double price) {
@@ -77,6 +212,19 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator while checking subscription
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Premium Plans"),
+          backgroundColor: mainColor,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Premium Plans"),
@@ -174,6 +322,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     required String description,
   }) {
     bool isExpanded = selectedPlan == planName;
+    bool isDisabled = _isPlanDisabled(planName);
 
     return GestureDetector(
       onTap: () => _choosePlan(planName),
@@ -182,10 +331,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDisabled ? Colors.grey[200] : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isExpanded ? mainColor : mainColor.withOpacity(0.6),
+            color: isDisabled
+                ? Colors.grey
+                : (isExpanded ? mainColor : mainColor.withOpacity(0.6)),
             width: isExpanded ? 2 : 1,
           ),
         ),
@@ -194,7 +345,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.workspace_premium, color: mainColor, size: 26),
+                Icon(Icons.workspace_premium,
+                    color: isDisabled ? Colors.grey : mainColor, size: 26),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -205,21 +357,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: mainColor,
+                          color: isDisabled ? Colors.grey : mainColor,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        description,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.black54),
+                        isDisabled
+                            ? "Active until ${expiryDate?.toString().split(' ')[0]}"
+                            : description,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color:
+                                isDisabled ? Colors.grey[600] : Colors.black54),
                       ),
                     ],
                   ),
                 ),
                 Icon(
                   isExpanded ? Icons.expand_less : Icons.expand_more,
-                  color: mainColor,
+                  color: isDisabled ? Colors.grey : mainColor,
                 ),
               ],
             ),
