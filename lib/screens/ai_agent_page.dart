@@ -65,8 +65,11 @@ class _AIAgentPageState extends State<AIAgentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("English AI Coach"),
-        backgroundColor: const Color(0xFF00B4D8),
+        title: const Text(
+          "English AI Coach",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -86,7 +89,7 @@ class _AIAgentPageState extends State<AIAgentPage> {
             const Icon(
               Icons.mic,
               size: 100,
-              color: Color(0xFF00B4D8),
+              color: Color(0xFF4A90A4),
             ),
             const SizedBox(height: 30),
             const Text(
@@ -119,7 +122,7 @@ class _AIAgentPageState extends State<AIAgentPage> {
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00B4D8),
+                backgroundColor: const Color(0xFF4A90A4),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 30,
                   vertical: 18,

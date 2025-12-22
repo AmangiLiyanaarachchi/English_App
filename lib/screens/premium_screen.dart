@@ -92,25 +92,54 @@ class _PremiumScreenState extends State<PremiumScreen> {
     }
   }
 
+  // bool _isPlanDisabled(String planName) {
+  //   // If Community OR AI Agent is active → Disable "Community + AI Agent"
+  //   if (planName == "Community + AI Agent") {
+  //     return hasCommunity || hasAIAgent;
+  //   }
+
+  //   // If both Community AND AI Agent are active → Disable "Community Plan"
+  //   if (planName == "Community Plan") {
+  //     return hasCommunity && hasAIAgent;
+  //   }
+
+  //   // If both Community AND AI Agent are active → Disable "AI Agent"
+  //   if (planName == "AI Agent") {
+  //     return hasCommunity && hasAIAgent;
+  //   }
+
+  //   return false;
+  // }
   bool _isPlanDisabled(String planName) {
-    // If Community OR AI Agent is active → Disable "Community + AI Agent"
-    if (planName == "Community + AI Agent") {
-      return hasCommunity || hasAIAgent;
-    }
-
-    // If both Community AND AI Agent are active → Disable "Community Plan"
     if (planName == "Community Plan") {
-      return hasCommunity && hasAIAgent;
+      return hasCommunity;
     }
 
-    // If both Community AND AI Agent are active → Disable "AI Agent"
     if (planName == "AI Agent") {
-      return hasCommunity && hasAIAgent;
+      return hasAIAgent;
     }
 
     return false;
   }
 
+  // void _choosePlan(String plan) {
+  //   if (_isPlanDisabled(plan)) {
+  //     _showPlanDisabledDialog(plan);
+  //     return;
+  //   }
+
+  //   setState(() {
+  //     if (selectedPlan == plan) {
+  //       selectedPlan = "";
+  //       selectedDuration = "";
+  //       selectedPrice = 0;
+  //     } else {
+  //       selectedPlan = plan;
+  //       selectedDuration = "";
+  //       selectedPrice = 0;
+  //     }
+  //   });
+  // }
   void _choosePlan(String plan) {
     if (_isPlanDisabled(plan)) {
       _showPlanDisabledDialog(plan);
@@ -130,29 +159,59 @@ class _PremiumScreenState extends State<PremiumScreen> {
     });
   }
 
+  // void _showPlanDisabledDialog(String planName) {
+  //   String message = "";
+
+  //   if (planName == "Community + AI Agent") {
+  //     message = "You already have active subscription(s):\n\n";
+  //     if (hasCommunity) {
+  //       message +=
+  //           "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
+  //     }
+  //     if (hasAIAgent) {
+  //       message +=
+  //           "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n";
+  //     }
+  //     message +=
+  //         "\nThe combo plan is disabled until your existing plans expire.";
+  //   } else {
+  //     message = "You already have both plans active:\n\n";
+  //     message +=
+  //         "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
+  //     message +=
+  //         "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n\n";
+  //     message +=
+  //         "Individual plan purchase is disabled until one of them expires.";
+  //   }
+
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text("Plan Not Available"),
+  //       content: Text(message),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text("OK"),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
   void _showPlanDisabledDialog(String planName) {
     String message = "";
 
-    if (planName == "Community + AI Agent") {
-      message = "You already have active subscription(s):\n\n";
-      if (hasCommunity) {
-        message +=
-            "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
-      }
-      if (hasAIAgent) {
-        message +=
-            "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n";
-      }
-      message +=
-          "\nThe combo plan is disabled until your existing plans expire.";
+    if (planName == "Community Plan" && hasCommunity) {
+      message = "You already have an active Community Plan.\n\n"
+          "Expiry date: ${communityExpiry?.toString().split(' ')[0]}\n\n"
+          "You can renew or purchase this plan again after it expires.";
+    } else if (planName == "AI Agent" && hasAIAgent) {
+      message = "You already have an active AI Agent subscription.\n\n"
+          "Expiry date: ${aiAgentExpiry?.toString().split(' ')[0]}\n\n"
+          "You can renew or purchase this plan again after it expires.";
     } else {
-      message = "You already have both plans active:\n\n";
-      message +=
-          "✓ Community Plan (expires: ${communityExpiry?.toString().split(' ')[0]})\n";
-      message +=
-          "✓ AI Agent (expires: ${aiAgentExpiry?.toString().split(' ')[0]})\n\n";
-      message +=
-          "Individual plan purchase is disabled until one of them expires.";
+      // Fallback (should not normally happen)
+      message = "This plan is currently not available.";
     }
 
     showDialog(
@@ -216,8 +275,12 @@ class _PremiumScreenState extends State<PremiumScreen> {
     if (isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text("Premium Plans"),
-          backgroundColor: mainColor,
+          automaticallyImplyLeading: false,
+          title: const Text(
+            "Premium Plans",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.white,
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -227,8 +290,10 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Premium Plans"),
-        backgroundColor: mainColor,
+        automaticallyImplyLeading: false,
+        title: const Text("Premium Plans",
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -263,11 +328,11 @@ class _PremiumScreenState extends State<PremiumScreen> {
                 planName: "AI Agent",
                 description: "AI answers, grammar help, 24/7 English support.",
               ),
-              const SizedBox(height: 12),
-              _buildPlanBox(
-                planName: "Community + AI Agent",
-                description: "Full community access + AI Agent support.",
-              ),
+              // const SizedBox(height: 12),
+              // _buildPlanBox(
+              //   planName: "Community + AI Agent",
+              //   description: "Full community access + AI Agent support.",
+              // ),
               const SizedBox(height: 20),
 
               // Continue button only for non-Community plans
@@ -361,14 +426,25 @@ class _PremiumScreenState extends State<PremiumScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
+                      // Text(
+                      //   isDisabled
+                      //       ? "Active until ${expiryDate?.toString().split(' ')[0]}"
+                      //       : description,
+                      //   style: TextStyle(
+                      //       fontSize: 13,
+                      //       color:
+                      //           isDisabled ? Colors.grey[600] : Colors.black54),
+                      // ),
                       Text(
                         isDisabled
-                            ? "Active until ${expiryDate?.toString().split(' ')[0]}"
+                            ? planName == "Community Plan"
+                                ? "Active until ${communityExpiry?.toString().split(' ')[0]}"
+                                : "Active until ${aiAgentExpiry?.toString().split(' ')[0]}"
                             : description,
                         style: TextStyle(
-                            fontSize: 13,
-                            color:
-                                isDisabled ? Colors.grey[600] : Colors.black54),
+                          fontSize: 13,
+                          color: isDisabled ? Colors.grey[600] : Colors.black54,
+                        ),
                       ),
                     ],
                   ),
@@ -382,19 +458,33 @@ class _PremiumScreenState extends State<PremiumScreen> {
             if (isExpanded) ...[
               const SizedBox(height: 16),
               Row(
-                children: [
-                  _buildInnerPackageBox(
-                    label: "1 Week",
-                    price: 100,
-                    plan: planName,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildInnerPackageBox(
-                    label: "6 Months",
-                    price: 1000,
-                    plan: planName,
-                  ),
-                ],
+                children: planName == "Community Plan"
+                    ? [
+                        _buildInnerPackageBox(
+                          label: "1 Month",
+                          price: 900,
+                          plan: planName,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildInnerPackageBox(
+                          label: "6 Months",
+                          price: 2500,
+                          plan: planName,
+                        ),
+                      ]
+                    : [
+                        _buildInnerPackageBox(
+                          label: "1000 Credits",
+                          price: 1500,
+                          plan: planName,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildInnerPackageBox(
+                          label: "2500 Credits",
+                          price: 3000,
+                          plan: planName,
+                        ),
+                      ],
               ),
 
               // 🔥 SHOW STUDENT ID FIELD ONLY FOR COMMUNITY PLAN

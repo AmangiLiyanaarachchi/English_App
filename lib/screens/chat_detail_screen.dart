@@ -1,20 +1,22 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../models/message_model.dart';
 import '../models/user_model.dart';
-import '../services/chat_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/call_signaling_service.dart';
 import '../services/agora_service.dart';
+import '../services/call_signaling_service.dart';
+import '../services/chat_service.dart';
 import 'voice_call_screen.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
@@ -467,6 +469,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: _buildAppBarTitle(),
         actions: [
           // Voice call button
@@ -475,20 +478,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             tooltip: 'Voice Call',
             onPressed: _otherUser != null ? _initiateVoiceCall : null,
           ),
-          if (_englishChallenge != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Center(
-                child: Chip(
-                  label: Text(
-                    _englishChallenge!,
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                  backgroundColor: Colors.amber.shade100,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                ),
-              ),
-            ),
+          // if (_englishChallenge != null)
+          //   Padding(
+          //     padding: const EdgeInsets.only(right: 8.0),
+          //     child: Center(
+          //       child: Chip(
+          //         label: Text(
+          //           _englishChallenge!,
+          //           style: const TextStyle(fontSize: 11),
+          //         ),
+          //         backgroundColor: Colors.amber.shade100,
+          //         padding: const EdgeInsets.symmetric(horizontal: 4),
+          //       ),
+          //     ),
+          //   ),
         ],
       ),
       body: Column(
@@ -516,7 +519,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
           // Messages list
           Expanded(
-            child: _buildMessagesList(),
+            child: Container(
+              color: const Color(0xFFE9F1F4), // WhatsApp base color
+              child: CustomPaint(
+                //painter: ChatBackgroundPainter(),
+                child: _buildMessagesList(),
+              ),
+            ),
           ),
 
           // Input area
@@ -528,35 +537,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Widget _buildAppBarTitle() {
     if (_otherUser == null) {
-      return Text(widget.otherUserId.substring(0, 8) + '...');
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(widget.otherUserId.substring(0, 8) + '...'),
+      );
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: const Color(0xFF4A90A4),
-          backgroundImage: _otherUser!.photoUrl != null
-              ? NetworkImage(_otherUser!.photoUrl!)
-              : null,
-          child: _otherUser!.photoUrl == null
-              ? Text(
-                  _otherUser!.displayName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                )
-              : null,
-        ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Align(
+      alignment: Alignment.centerLeft, // ✅ force start alignment
+      child: Row(
+        mainAxisSize: MainAxisSize.max, // ✅ allow full width
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: const Color(0xFF4A90A4),
+            backgroundImage: _otherUser!.photoUrl != null
+                ? NetworkImage(_otherUser!.photoUrl!)
+                : null,
+            child: _otherUser!.photoUrl == null
+                ? Text(
+                    _otherUser!.displayName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start, // ✅ name + status left
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 _otherUser!.displayName,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
@@ -568,8 +585,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -847,19 +864,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       children: [
         // Message input field
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: const Color(0xFFE9F1F4),
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: _messageFocusNode.hasFocus
+                    ? const Color(0xFF4A90A4)
+                    : Colors.transparent,
+                width: 1.6,
+              ),
             ),
             child: TextField(
               controller: _messageController,
               focusNode: _messageFocusNode,
               decoration: const InputDecoration(
                 hintText: 'Type your message...',
+                isDense: true,
                 border: InputBorder.none,
-                hintStyle: TextStyle(fontSize: 14),
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
               ),
               textCapitalization: TextCapitalization.sentences,
               maxLines: null,
@@ -1059,3 +1088,247 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 }
+
+/// ------------------------------------------------------------
+/// WhatsApp-style chat background (NO IMAGE)
+/// Dense, multi-layer doodle pattern with varied sizes
+/// ------------------------------------------------------------
+// class ChatBackgroundPainter extends CustomPainter {
+//   final Random _random = Random(99);
+
+//   @override
+//   void paint(Canvas canvas, Size size) {
+//     final Paint paint = Paint()
+//       ..color = Colors.black.withOpacity(0.18)
+//       ..style = PaintingStyle.stroke
+//       ..strokeWidth = 1;
+
+//     // ───────────── Layer 1: Small doodles (gap fillers) ─────────────
+//     _drawLayer(
+//       canvas,
+//       paint,
+//       size,
+//       spacing: 70,
+//       minScale: 0.6,
+//       maxScale: 0.8,
+//     );
+
+//     // ───────────── Layer 2: Medium doodles ─────────────
+//     _drawLayer(
+//       canvas,
+//       paint,
+//       size,
+//       spacing: 120,
+//       minScale: 0.6,
+//       maxScale: 0.9,
+//     );
+
+//     // ───────────── Layer 3: Large doodles ─────────────
+//     _drawLayer(
+//       canvas,
+//       paint,
+//       size,
+//       spacing: 200,
+//       minScale: 0.9,
+//       maxScale: 1.2,
+//     );
+//   }
+
+//   // ================================================================
+//   // Layer drawing
+//   // ================================================================
+//   void _drawLayer(
+//     Canvas canvas,
+//     Paint paint,
+//     Size size, {
+//     required double spacing,
+//     required double minScale,
+//     required double maxScale,
+//   }) {
+//     for (double x = -spacing; x < size.width + spacing; x += spacing) {
+//       for (double y = -spacing; y < size.height + spacing; y += spacing) {
+//         canvas.save();
+
+//         final double dx = x + _random.nextDouble() * spacing * 0.6;
+//         final double dy = y + _random.nextDouble() * spacing * 0.6;
+//         final double scale =
+//             minScale + _random.nextDouble() * (maxScale - minScale);
+
+//         canvas.translate(dx, dy);
+//         canvas.rotate(_random.nextDouble() * pi / 3);
+//         canvas.scale(scale);
+
+//         _drawRandomDoodle(canvas, paint);
+
+//         canvas.restore();
+//       }
+//     }
+//   }
+
+//   // ================================================================
+//   // Doodle selector
+//   // ================================================================
+//   void _drawRandomDoodle(Canvas canvas, Paint paint) {
+//     switch (_random.nextInt(12)) {
+//       case 0:
+//         _chatBubble(canvas, paint);
+//         break;
+//       case 1:
+//         _paperPlane(canvas, paint);
+//         break;
+//       case 2:
+//         _smiley(canvas, paint);
+//         break;
+//       case 3:
+//         _camera(canvas, paint);
+//         break;
+//       case 4:
+//         _clock(canvas, paint);
+//         break;
+//       case 5:
+//         _heart(canvas, paint);
+//         break;
+//       case 6:
+//         _locationPin(canvas, paint);
+//         break;
+//       case 7:
+//         _musicNote(canvas, paint);
+//         break;
+//       case 8:
+//         _star(canvas, paint);
+//         break;
+//       case 9:
+//         _lightning(canvas, paint);
+//         break;
+//       case 10:
+//         _lock(canvas, paint);
+//         break;
+//       case 11:
+//         _phone(canvas, paint);
+//         break;
+//     }
+//   }
+
+//   // ================================================================
+//   // Individual doodles
+//   // ================================================================
+
+//   void _chatBubble(Canvas c, Paint p) {
+//     c.drawRRect(
+//       RRect.fromRectAndRadius(
+//         const Rect.fromLTWH(0, 0, 44, 30),
+//         const Radius.circular(6),
+//       ),
+//       p,
+//     );
+//     c.drawLine(const Offset(12, 30), const Offset(18, 38), p);
+//   }
+
+//   void _paperPlane(Canvas c, Paint p) {
+//     final path = Path()
+//       ..moveTo(0, 0)
+//       ..lineTo(48, 22)
+//       ..lineTo(0, 44)
+//       ..lineTo(14, 22)
+//       ..close();
+//     c.drawPath(path, p);
+//   }
+
+//   void _smiley(Canvas c, Paint p) {
+//     c.drawCircle(const Offset(22, 22), 18, p);
+//     c.drawCircle(const Offset(16, 18), 2, p);
+//     c.drawCircle(const Offset(28, 18), 2, p);
+//     c.drawArc(
+//       const Rect.fromLTWH(14, 20, 16, 12),
+//       0,
+//       pi,
+//       false,
+//       p,
+//     );
+//   }
+
+//   void _camera(Canvas c, Paint p) {
+//     c.drawRect(const Rect.fromLTWH(0, 10, 46, 28), p);
+//     c.drawCircle(const Offset(23, 24), 7, p);
+//     c.drawRect(const Rect.fromLTWH(12, 0, 16, 10), p);
+//   }
+
+//   void _clock(Canvas c, Paint p) {
+//     c.drawCircle(const Offset(22, 22), 18, p);
+//     c.drawLine(const Offset(22, 22), const Offset(22, 10), p);
+//     c.drawLine(const Offset(22, 22), const Offset(32, 22), p);
+//   }
+
+//   void _heart(Canvas c, Paint p) {
+//     final path = Path()
+//       ..moveTo(22, 36)
+//       ..cubicTo(0, 16, 10, 0, 22, 12)
+//       ..cubicTo(34, 0, 44, 16, 22, 36);
+//     c.drawPath(path, p);
+//   }
+
+//   void _locationPin(Canvas c, Paint p) {
+//     c.drawCircle(const Offset(22, 16), 10, p);
+//     c.drawCircle(const Offset(22, 16), 3, p);
+//     c.drawLine(const Offset(22, 26), const Offset(22, 46), p);
+//   }
+
+//   void _musicNote(Canvas c, Paint p) {
+//     c.drawLine(const Offset(22, 0), const Offset(22, 32), p);
+//     c.drawLine(const Offset(22, 0), const Offset(38, 8), p);
+//     c.drawCircle(const Offset(16, 36), 6, p);
+//   }
+
+//   void _star(Canvas c, Paint p) {
+//     final path = Path()
+//       ..moveTo(22, 0)
+//       ..lineTo(28, 14)
+//       ..lineTo(44, 14)
+//       ..lineTo(30, 22)
+//       ..lineTo(34, 40)
+//       ..lineTo(22, 30)
+//       ..lineTo(10, 40)
+//       ..lineTo(14, 22)
+//       ..lineTo(0, 14)
+//       ..lineTo(16, 14)
+//       ..close();
+//     c.drawPath(path, p);
+//   }
+
+//   void _lightning(Canvas c, Paint p) {
+//     final path = Path()
+//       ..moveTo(18, 0)
+//       ..lineTo(36, 18)
+//       ..lineTo(24, 18)
+//       ..lineTo(40, 46)
+//       ..lineTo(6, 22)
+//       ..lineTo(18, 22)
+//       ..close();
+//     c.drawPath(path, p);
+//   }
+
+//   void _lock(Canvas c, Paint p) {
+//     c.drawRect(const Rect.fromLTWH(8, 18, 28, 26), p);
+//     c.drawArc(
+//       const Rect.fromLTWH(10, 0, 24, 26),
+//       pi,
+//       pi,
+//       false,
+//       p,
+//     );
+//   }
+
+//   void _phone(Canvas c, Paint p) {
+//     c.drawRRect(
+//       RRect.fromRectAndRadius(
+//         const Rect.fromLTWH(10, 0, 24, 44),
+//         const Radius.circular(6),
+//       ),
+//       p,
+//     );
+//     c.drawCircle(const Offset(22, 40), 2, p);
+//   }
+
+//   @override
+//   bool shouldRepaint(CustomPainter oldDelegate) => false;
+// }

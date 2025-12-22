@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:english_circle/models/status_model.dart';
 import 'package:english_circle/screens/ai_agent_page.dart';
 import 'package:english_circle/screens/premium_screen.dart';
-import 'package:english_circle/services/premium_access_service.dart';
+import 'package:english_circle/services/status_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/user.dart' as models;
@@ -47,6 +49,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _hasPackage(models.UserModel user) {
     return user.package != null && user.package!.isNotEmpty;
+  }
+
+  bool _isDayCompleted(DateTime day, int streakDays) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final checkDay = DateUtils.dateOnly(day);
+
+    // If streakDays > 0 → normal logic
+    if (streakDays > 0) {
+      final diff = today.difference(checkDay).inDays;
+      return diff >= 0 && diff < streakDays;
+    }
+
+    // If streakDays == 0 → highlight today only
+    return today == checkDay;
+  }
+
+  List<DateTime> _getCurrentWeekDates() {
+    final now = DateTime.now();
+
+    // ISO week starts on Monday (1)
+    final int currentWeekday = now.weekday;
+    final monday = now.subtract(Duration(days: currentWeekday - 1));
+
+    return List.generate(7, (index) {
+      return monday.add(Duration(days: index));
+    });
   }
 
   // Handle tab navigation - no dialogs, just show premium screen in-tab
@@ -336,12 +364,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_isLoadingProfile) {
       return const Center(child: CircularProgressIndicator());
     }
+    final weekDates = _getCurrentWeekDates();
+    final streakDays = _currentUser?.streakDays ?? 0;
+    final streak = _currentUser?.streakDays ?? 0;
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Header with avatar and online count
-          Container(
+    return Column(
+      children: [
+        // Header with avatar and online count
+        SafeArea(
+          bottom: false,
+          child: Container(
             padding: const EdgeInsets.all(16),
             color: Colors.white,
             child: Row(
@@ -380,362 +412,414 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.circle, size: 8, color: Colors.green),
-                        SizedBox(width: 4),
-                        Text(
-                          '136 online',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
+                        const Icon(Icons.circle, size: 8, color: Colors.green),
+                        const SizedBox(width: 4),
+                        StreamBuilder<int>(
+                          stream: _onlineUsersCountStream(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Text(
+                                '...',
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
+                              );
+                            }
+
+                            return Text(
+                              '${snapshot.data} online',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
                   ],
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {},
-                ),
+                // IconButton(
+                //   icon: const Icon(Icons.notifications_outlined),
+                //   onPressed: () {},
+                // ),
               ],
             ),
           ),
-          const Divider(height: 1),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Today's Goal Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Today's Goal",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                // 👇 ADD THIS IN _buildHomeTab() after header & divider
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Practice for 5 minutes',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Row(
-                        children: [
-                          Icon(Icons.access_time,
-                              size: 14, color: Colors.orange),
-                          SizedBox(width: 4),
-                          Text(
-                            'In progress',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.orange,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Container(
-                            height: 70,
-                            width: 70,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.grey.shade300,
-                                width: 4,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${_currentUser?.totalMinutes ?? 0}m',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: _buildHomeStatusRow(),
                   ),
                 ),
-                const SizedBox(height: 20),
 
-                // Random Call Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 8),
+
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.phone_in_talk,
-                              color: Color(0xFF4A90A4), size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'Random Call',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                      // Today's Goal Card
+                      // Container(
+                      //   padding: const EdgeInsets.all(20),
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.white,
+                      //     borderRadius: BorderRadius.circular(16),
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: Colors.black.withOpacity(0.05),
+                      //         blurRadius: 10,
+                      //         offset: const Offset(0, 2),
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: Column(
+                      //     crossAxisAlignment: CrossAxisAlignment.start,
+                      //     children: [
+                      //       const Text(
+                      //         "Today's Goal",
+                      //         style: TextStyle(
+                      //           fontSize: 18,
+                      //           fontWeight: FontWeight.bold,
+                      //         ),
+                      //       ),
+                      //       const SizedBox(height: 8),
+                      //       const Text(
+                      //         'Practice for 5 minutes',
+                      //         style: TextStyle(
+                      //           fontSize: 15,
+                      //           color: Colors.black87,
+                      //         ),
+                      //       ),
+                      //       const SizedBox(height: 4),
+                      //       const Row(
+                      //         children: [
+                      //           Icon(Icons.access_time,
+                      //               size: 14, color: Colors.orange),
+                      //           SizedBox(width: 4),
+                      //           Text(
+                      //             'In progress',
+                      //             style: TextStyle(
+                      //               fontSize: 13,
+                      //               color: Colors.orange,
+                      //             ),
+                      //           ),
+                      //         ],
+                      //       ),
+                      //       const SizedBox(height: 12),
+                      //       Row(
+                      //         children: [
+                      //           Container(
+                      //             height: 70,
+                      //             width: 70,
+                      //             decoration: BoxDecoration(
+                      //               shape: BoxShape.circle,
+                      //               border: Border.all(
+                      //                 color: Colors.grey.shade300,
+                      //                 width: 4,
+                      //               ),
+                      //             ),
+                      //             child: Center(
+                      //               child: Text(
+                      //                 '${_currentUser?.totalMinutes ?? 0}m',
+                      //                 style: const TextStyle(
+                      //                   fontSize: 16,
+                      //                   fontWeight: FontWeight.bold,
+                      //                   color: Colors.orange,
+                      //                 ),
+                      //               ),
+                      //             ),
+                      //           ),
+                      //         ],
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
+                      //const SizedBox(height: 20),
+
+                      // Random Call Card
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Filter by:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _buildFilterChip('Free', true),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Female', false),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Male', false),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _startRandomCall,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4A90A4),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.phone_in_talk,
+                                    color: Color(0xFF4A90A4), size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Random Call',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                )
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.phone, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Connect with Co-learners',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
                                 ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Quick Actions Grid
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.podcasts,
-                        label: 'Pod',
-                        color: const Color(0xFF4A90A4),
-                        onTap: () {},
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.local_fire_department,
-                        label: '1D',
-                        color: const Color(0xFF4A90A4),
-                        onTap: () {},
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.history,
-                        label: 'History',
-                        color: const Color(0xFF4A90A4),
-                        onTap: () {},
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildQuickActionCard(
-                        icon: Icons.workspace_premium,
-                        label: 'Premium',
-                        color: const Color(0xFF4A90A4),
-                        onTap: () {
-                          // Navigate to premium screen
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Weekly Streak Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_fire_department,
-                              color: Colors.orange, size: 24),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Weekly Streak',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              ],
                             ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${_currentUser?.streakDays ?? 1}/7 Days',
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Get instantly connected with another English learner for a real-time voice conversation. '
+                              'Calls are randomly matched to help you practice speaking naturally and confidently.',
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange.shade800,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: Colors.grey,
+                                height: 1.4,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildStreakDay('Tue', false),
-                          _buildStreakDay('Wed', false),
-                          _buildStreakDay('Thu', false),
-                          _buildStreakDay('Fri', false),
-                          _buildStreakDay('Sat', false),
-                          _buildStreakDay('Sun', true),
-                          _buildStreakDay('Mon', false),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // FAQs Section
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.help_outline,
-                              color: Color(0xFF4A90A4), size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'FAQs',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 12),
+                            // Row(
+                            //   children: [
+                            //     _buildFilterChip('Free', true),
+                            //     const SizedBox(width: 8),
+                            //     _buildFilterChip('Female', false),
+                            //     const SizedBox(width: 8),
+                            //     _buildFilterChip('Male', false),
+                            //   ],
+                            // ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _startRandomCall,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4A90A4),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.phone, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Connect with Co-learners',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildFAQItem('What is EnglishCircle?'),
-                      const Divider(),
-                      _buildFAQItem(
-                          'How does EnglishCircle help improve fluency?'),
+                      const SizedBox(height: 20),
+
+                      // Quick Actions Grid
+                      // Row(
+                      //   children: [
+                      //     Expanded(
+                      //       child: _buildQuickActionCard(
+                      //         icon: Icons.podcasts,
+                      //         label: 'Pod',
+                      //         color: const Color(0xFF4A90A4),
+                      //         onTap: () {},
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 12),
+                      //     Expanded(
+                      //       child: _buildQuickActionCard(
+                      //         icon: Icons.local_fire_department,
+                      //         label: '1D',
+                      //         color: const Color(0xFF4A90A4),
+                      //         onTap: () {},
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 12),
+                      //     Expanded(
+                      //       child: _buildQuickActionCard(
+                      //         icon: Icons.history,
+                      //         label: 'History',
+                      //         color: const Color(0xFF4A90A4),
+                      //         onTap: () {},
+                      //       ),
+                      //     ),
+                      //     const SizedBox(width: 12),
+                      //     Expanded(
+                      //       child: _buildQuickActionCard(
+                      //         icon: Icons.workspace_premium,
+                      //         label: 'Premium',
+                      //         color: const Color(0xFF4A90A4),
+                      //         onTap: () {
+                      //           // Navigate to premium screen
+                      //         },
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
+                      //const SizedBox(height: 20),
+
+                      // Weekly Streak Card
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.local_fire_department,
+                                    color: Colors.orange, size: 24),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Weekly Streak',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    streak == 0
+                                        ? 'Start today'
+                                        : '$streak/7 Days',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: weekDates.map((date) {
+                                final dayLabel = DateFormat('EEE')
+                                    .format(date); // Mon, Tue, etc.
+                                final completed =
+                                    _isDayCompleted(date, streakDays);
+
+                                return _buildStreakDay(dayLabel, completed);
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // FAQs Section
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.help_outline,
+                                    color: Color(0xFF4A90A4), size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'FAQs',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _buildFAQItem(
+                              'What is EnglishCircle?',
+                              'EnglishCircle is a social learning platform where users practice English through real-time voice conversations, AI support, and community interaction.',
+                            ),
+                            const Divider(),
+                            _buildFAQItem(
+                              'How does EnglishCircle help improve fluency?',
+                              'It improves fluency by connecting learners with real people for speaking practice, providing instant feedback, and encouraging daily speaking habits.',
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -855,26 +939,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFAQItem(String question) {
-    return InkWell(
-      onTap: () {},
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                question,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-          ],
+  Widget _buildFAQItem(String question, String answer) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+
+      // 🔴 REMOVE DIVIDER LINES
+      shape: const Border(),
+      collapsedShape: const Border(),
+
+      title: Text(
+        question,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
         ),
       ),
+      children: [
+        Text(
+          answer,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade700,
+            height: 1.4,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1093,5 +1184,113 @@ class _HomeScreenState extends State<HomeScreen> {
     _incomingCallSubscription?.cancel();
     _agoraService.dispose();
     super.dispose();
+  }
+
+  Widget _buildHomeStatusRow() {
+    return SizedBox(
+      height: 110,
+      child: StreamBuilder<List<StatusModel>>(
+        stream: StatusService().getActiveStatuses(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox.shrink();
+          }
+
+          // Group by user → show only latest status per user
+          final Map<String, StatusModel> latestByUser = {};
+          for (final status in snapshot.data!) {
+            latestByUser.putIfAbsent(status.ownerId, () => status);
+          }
+
+          final statuses = latestByUser.values.toList();
+
+          // 👤 Move current user's status to first position
+          final myUserId = StatusService().currentUser?.uid;
+
+          if (myUserId != null) {
+            final myIndex = statuses.indexWhere((s) => s.ownerId == myUserId);
+
+            if (myIndex > 0) {
+              final myStatus = statuses.removeAt(myIndex);
+              statuses.insert(0, myStatus);
+            }
+          }
+
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: statuses.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 14),
+            itemBuilder: (context, index) {
+              final status = statuses[index];
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StatusDetailScreen(status: status),
+                    ),
+                  );
+                },
+                child: Column(
+                  children: [
+                    // 🔵 Avatar with ring
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF4A90A4),
+                      ),
+                      child: CircleAvatar(
+                        radius: 30,
+                        backgroundImage: status.ownerPhoto.isNotEmpty
+                            ? NetworkImage(status.ownerPhoto)
+                            : null,
+                        child: status.ownerPhoto.isEmpty
+                            ? Text(
+                                status.ownerName[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // 👤 Name
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        status.ownerName,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Stream<int> _onlineUsersCountStream() {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('isOnline', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
   }
 }

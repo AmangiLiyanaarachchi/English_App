@@ -176,12 +176,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         backgroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Settings
-            },
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.settings),
+          //   onPressed: () {
+          //     // Settings
+          //   },
+          // ),
         ],
       ),
       body: SingleChildScrollView(
@@ -194,83 +194,83 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Column(
                 children: [
                   // Weekly Progress Chart
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'You',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF4A90A4),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${_userProfile!.totalMinutes}m',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF4A90A4),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Weekly chart
-                        SizedBox(
-                          height: 100,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _buildChartBar('Tue', 0, 100),
-                              _buildChartBar('Wed', 0, 100),
-                              _buildChartBar('Thu', 0, 100),
-                              _buildChartBar('Fri', 0, 100),
-                              _buildChartBar('Sat', 0, 100),
-                              _buildChartBar('Sun', 80, 100),
-                              _buildChartBar('Mon', 0, 100),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: const [
-                            Text('Tue',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Wed',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Thu',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Fri',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Sat',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Sun',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                            Text('Mon',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.grey)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Container(
+                  //   padding: const EdgeInsets.all(16),
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.grey.shade50,
+                  //     borderRadius: BorderRadius.circular(12),
+                  //   ),
+                  //   child: Column(
+                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                  //     children: [
+                  //       Row(
+                  //         children: [
+                  //           const Text(
+                  //             'You',
+                  //             style: TextStyle(
+                  //               fontSize: 16,
+                  //               fontWeight: FontWeight.bold,
+                  //               color: Color(0xFF4A90A4),
+                  //             ),
+                  //           ),
+                  //           const Spacer(),
+                  //           Text(
+                  //             '${_userProfile!.totalMinutes}m',
+                  //             style: const TextStyle(
+                  //               fontSize: 14,
+                  //               color: Color(0xFF4A90A4),
+                  //             ),
+                  //           ),
+                  //         ],
+                  //       ),
+                  //       const SizedBox(height: 12),
+                  //       // Weekly chart
+                  //       SizedBox(
+                  //         height: 100,
+                  //         child: Row(
+                  //           mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  //           crossAxisAlignment: CrossAxisAlignment.end,
+                  //           children: [
+                  //             _buildChartBar('Tue', 0, 100),
+                  //             _buildChartBar('Wed', 0, 100),
+                  //             _buildChartBar('Thu', 0, 100),
+                  //             _buildChartBar('Fri', 0, 100),
+                  //             _buildChartBar('Sat', 0, 100),
+                  //             _buildChartBar('Sun', 80, 100),
+                  //             _buildChartBar('Mon', 0, 100),
+                  //           ],
+                  //         ),
+                  //       ),
+                  //       const SizedBox(height: 8),
+                  //       Row(
+                  //         mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  //         children: const [
+                  //           Text('Tue',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Wed',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Thu',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Fri',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Sat',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Sun',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //           Text('Mon',
+                  //               style: TextStyle(
+                  //                   fontSize: 11, color: Colors.grey)),
+                  //         ],
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   const SizedBox(height: 20),
                   // Profile Card
                   Container(
@@ -303,21 +303,21 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     )
                                   : null,
                             ),
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: const Icon(Icons.camera_alt,
-                                    size: 20, color: Colors.grey),
-                              ),
-                            ),
+                            // Positioned(
+                            //   right: 0,
+                            //   bottom: 0,
+                            //   child: Container(
+                            //     padding: const EdgeInsets.all(4),
+                            //     decoration: BoxDecoration(
+                            //       color: Colors.white,
+                            //       shape: BoxShape.circle,
+                            //       border:
+                            //           Border.all(color: Colors.grey.shade300),
+                            //     ),
+                            //     child: const Icon(Icons.camera_alt,
+                            //         size: 20, color: Colors.grey),
+                            //   ),
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -332,35 +332,35 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.edit, size: 18),
-                              onPressed: () {
-                                // Edit name
-                              },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
+                            // IconButton(
+                            //   icon: const Icon(Icons.edit, size: 18),
+                            //   onPressed: () {
+                            //     // Edit name
+                            //   },
+                            //   padding: EdgeInsets.zero,
+                            //   constraints: const BoxConstraints(),
+                            // ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _userProfile!.uid.substring(0, 16),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.copy,
-                                size: 14, color: Colors.grey.shade400),
-                          ],
-                        ),
+                        // const SizedBox(height: 8),
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.center,
+                        //   children: [
+                        //     Text(
+                        //       _userProfile!.uid.substring(0, 16),
+                        //       style: const TextStyle(
+                        //         fontSize: 12,
+                        //         color: Colors.grey,
+                        //       ),
+                        //     ),
+                        //     const SizedBox(width: 4),
+                        //     Icon(Icons.copy,
+                        //         size: 14, color: Colors.grey.shade400),
+                        //   ],
+                        // ),
                         const SizedBox(height: 8),
                         Text(
-                          'Sri Lanka | Western Province',
+                          'Sri Lanka',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade600,
@@ -375,171 +375,171 @@ class _ProfileScreenState extends State<ProfileScreen>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'male',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '0 Following',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: const Color(0xFF4A90A4),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 24),
-                            Text(
-                              '0 Followers',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: const Color(0xFF4A90A4),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                        // Container(
+                        //   padding: const EdgeInsets.symmetric(
+                        //       horizontal: 16, vertical: 6),
+                        //   decoration: BoxDecoration(
+                        //     color: Colors.grey.shade200,
+                        //     borderRadius: BorderRadius.circular(20),
+                        //   ),
+                        //   child: Text(
+                        //     'male',
+                        //     style: const TextStyle(
+                        //       fontSize: 13,
+                        //       color: Colors.black87,
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 16),
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.center,
+                        //   children: [
+                        //     Text(
+                        //       '0 Following',
+                        //       style: TextStyle(
+                        //         fontSize: 14,
+                        //         color: const Color(0xFF4A90A4),
+                        //         fontWeight: FontWeight.w600,
+                        //       ),
+                        //     ),
+                        //     const SizedBox(width: 24),
+                        //     Text(
+                        //       '0 Followers',
+                        //       style: TextStyle(
+                        //         fontSize: 14,
+                        //         color: const Color(0xFF4A90A4),
+                        //         fontWeight: FontWeight.w600,
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            //const SizedBox(height: 16),
 
             // Statistics Section
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Statistic',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.local_fire_department,
-                                  color: Colors.orange, size: 32),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Current streak',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_userProfile!.streakDays} days',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.emoji_events,
-                                  color: Colors.amber, size: 32),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Best streak',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_userProfile!.streakDays} days',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.auto_awesome,
-                            color: Colors.amber, size: 32),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Aura',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            Text(
-                              '${_userProfile!.karmaPoints}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   color: Colors.white,
+            //   padding: const EdgeInsets.all(20),
+            //   child: Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       const Text(
+            //         'Statistic',
+            //         style: TextStyle(
+            //           fontSize: 20,
+            //           fontWeight: FontWeight.bold,
+            //         ),
+            //       ),
+            //       const SizedBox(height: 16),
+            //       Row(
+            //         children: [
+            //           Expanded(
+            //             child: Container(
+            //               padding: const EdgeInsets.all(16),
+            //               decoration: BoxDecoration(
+            //                 color: Colors.grey.shade50,
+            //                 borderRadius: BorderRadius.circular(12),
+            //               ),
+            //               child: Column(
+            //                 children: [
+            //                   const Icon(Icons.local_fire_department,
+            //                       color: Colors.orange, size: 32),
+            //                   const SizedBox(height: 8),
+            //                   const Text(
+            //                     'Current streak',
+            //                     style: TextStyle(
+            //                       fontSize: 12,
+            //                       color: Colors.grey,
+            //                     ),
+            //                   ),
+            //                   const SizedBox(height: 4),
+            //                   Text(
+            //                     '${_userProfile!.streakDays} days',
+            //                     style: const TextStyle(
+            //                       fontSize: 18,
+            //                       fontWeight: FontWeight.bold,
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //           ),
+            //           const SizedBox(width: 12),
+            //           Expanded(
+            //             child: Container(
+            //               padding: const EdgeInsets.all(16),
+            //               decoration: BoxDecoration(
+            //                 color: Colors.grey.shade50,
+            //                 borderRadius: BorderRadius.circular(12),
+            //               ),
+            //               child: Column(
+            //                 children: [
+            //                   const Icon(Icons.emoji_events,
+            //                       color: Colors.amber, size: 32),
+            //                   const SizedBox(height: 8),
+            //                   const Text(
+            //                     'Best streak',
+            //                     style: TextStyle(
+            //                       fontSize: 12,
+            //                       color: Colors.grey,
+            //                     ),
+            //                   ),
+            //                   const SizedBox(height: 4),
+            //                   Text(
+            //                     '${_userProfile!.streakDays} days',
+            //                     style: const TextStyle(
+            //                       fontSize: 18,
+            //                       fontWeight: FontWeight.bold,
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //       const SizedBox(height: 16),
+            //       Container(
+            //         padding: const EdgeInsets.all(16),
+            //         decoration: BoxDecoration(
+            //           color: Colors.grey.shade50,
+            //           borderRadius: BorderRadius.circular(12),
+            //         ),
+            //         child: Row(
+            //           children: [
+            //             const Icon(Icons.auto_awesome,
+            //                 color: Colors.amber, size: 32),
+            //             const SizedBox(width: 12),
+            //             Column(
+            //               crossAxisAlignment: CrossAxisAlignment.start,
+            //               children: [
+            //                 const Text(
+            //                   'Aura',
+            //                   style: TextStyle(
+            //                     fontSize: 12,
+            //                     color: Colors.grey,
+            //                   ),
+            //                 ),
+            //                 Text(
+            //                   '${_userProfile!.karmaPoints}',
+            //                   style: const TextStyle(
+            //                     fontSize: 18,
+            //                     fontWeight: FontWeight.bold,
+            //                   ),
+            //                 ),
+            //               ],
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             const SizedBox(height: 16),
 
             // Other Section

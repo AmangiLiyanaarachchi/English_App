@@ -1,10 +1,12 @@
 import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:timeago/timeago.dart' as timeago;
+
 import '../models/status_model.dart';
 import '../services/status_service.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 class StatusScreen extends StatefulWidget {
   const StatusScreen({super.key});
@@ -166,8 +168,11 @@ class _StatusScreenState extends State<StatusScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Status'),
-        backgroundColor: const Color(0xFF4A90A4),
+        title: const Text(
+          'Status',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
         elevation: 0,
       ),
       body: StreamBuilder<List<StatusModel>>(
@@ -218,12 +223,27 @@ class _StatusScreenState extends State<StatusScreen> {
             groupedStatuses[status.ownerId]!.add(status);
           }
 
+          final myUserId = _statusService.currentUser?.uid;
+
+// Convert map to ordered list of entries
+          final entries = groupedStatuses.entries.toList();
+
+// 👤 Move current user's status to top
+          if (myUserId != null) {
+            final myIndex = entries.indexWhere((e) => e.key == myUserId);
+
+            if (myIndex > 0) {
+              final myEntry = entries.removeAt(myIndex);
+              entries.insert(0, myEntry);
+            }
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: groupedStatuses.length,
+            itemCount: entries.length,
             itemBuilder: (context, index) {
-              final ownerId = groupedStatuses.keys.elementAt(index);
-              final userStatuses = groupedStatuses[ownerId]!;
+              final entry = entries[index];
+              final userStatuses = entry.value;
               final latestStatus = userStatuses.first;
 
               return _buildStatusCard(latestStatus, userStatuses);
