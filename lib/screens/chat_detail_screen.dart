@@ -16,7 +16,9 @@ import '../models/user_model.dart';
 import '../services/agora_service.dart';
 import '../services/call_signaling_service.dart';
 import '../services/chat_service.dart';
+import '../services/voice_minutes_service.dart';
 import 'voice_call_screen.dart';
+import 'voice_topup_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
@@ -1011,6 +1013,59 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     if (_otherUser == null) return;
 
     try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not authenticated')),
+        );
+        return;
+      }
+
+      // NEW: Check voice minutes before allowing call
+      final voiceCheck =
+          await VoiceMinutesService.checkVoiceMinutes(currentUser.uid);
+
+      if (!voiceCheck['hasAccess']) {
+        // Show dialog explaining no access
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.phone_disabled, color: Colors.red),
+                SizedBox(width: 12),
+                Text("Voice Call Unavailable"),
+              ],
+            ),
+            content: Text(voiceCheck['message']),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              if (voiceCheck['message'].toString().contains('finished'))
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    // Navigate to voice top-up screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const VoiceTopupScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A90A4),
+                  ),
+                  child: const Text("Buy Minutes"),
+                ),
+            ],
+          ),
+        );
+        return;
+      }
+
       // Request microphone permission first
       final micPermission = await Permission.microphone.request();
       if (!micPermission.isGranted) {
@@ -1030,15 +1085,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           child: CircularProgressIndicator(),
         ),
       );
-
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not authenticated')),
-        );
-        return;
-      }
 
       // Get current user data
       final currentUserDoc = await FirebaseFirestore.instance

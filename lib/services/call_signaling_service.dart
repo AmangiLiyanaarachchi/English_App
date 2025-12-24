@@ -115,9 +115,11 @@ class CallSignalingService {
 
   // Cancel a call (caller cancels before receiver answers)
   Future<void> cancelCall(String callId) async {
+    print('🚫 SIGNALING: Updating call $callId status to CANCELLED');
     await _firestore.collection('calls').doc(callId).update({
       'status': 'cancelled',
     });
+    print('✅ SIGNALING: Call status updated to cancelled in Firestore');
   }
 
   // Mark call as missed

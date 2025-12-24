@@ -559,6 +559,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _handlePaymentSuccess(
       String userId, String orderId, String paymentId) async {
     try {
+      // Check if this is a voice top-up purchase
+      bool isVoiceTopup = widget.selectedPlan.contains("Voice Top-Up");
+
+      if (isVoiceTopup) {
+        // Handle voice minute top-up
+        await _handleVoiceTopupPurchase(userId, orderId, paymentId);
+        return;
+      }
+
       DateTime expiryDate;
 
       if (widget.selectedDuration.toLowerCase().contains("week")) {
@@ -591,11 +600,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
       List<String> currentPurchaseFeatures = [];
 
       if (widget.selectedPlan.contains("Community")) {
+        // Calculate voice minutes based on duration
+        int voiceTotalMinutes = 0;
+        if (widget.selectedDuration == "1 Month") {
+          voiceTotalMinutes = 20; // 20 minutes for 1 month
+        } else if (widget.selectedDuration == "6 Months") {
+          voiceTotalMinutes = 540; // 540 minutes for 6 months
+        }
+
         subscriptions['community'] = {
           'expiryDate': expiryDate,
           'plan': widget.selectedPlan,
           'duration': widget.selectedDuration,
           'price': widget.price,
+          'voiceTotalMinutes': voiceTotalMinutes,
         };
         currentPurchaseFeatures.add('community');
       }
@@ -607,6 +625,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'price': widget.price,
         };
         currentPurchaseFeatures.add('ai_agent');
+
+        // Calculate AI minutes based on credits
+        int aiTotalSeconds = 0;
+        String planType = "";
+
+        if (widget.selectedDuration == "1000 Credits") {
+          aiTotalSeconds = 1200; // 20 minutes = 1200 seconds
+          planType = "AI_1000";
+        } else if (widget.selectedDuration == "2500 Credits") {
+          aiTotalSeconds = 2700; // 45 minutes = 2700 seconds
+          planType = "AI_2500";
+        }
+
+        // Store AI minutes data
+        subscriptions['ai_agent']['aiTotalSeconds'] = aiTotalSeconds;
+        subscriptions['ai_agent']['planType'] = planType;
       }
 
       // Build complete unlocked features list from all active subscriptions
@@ -660,8 +694,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
         packageName = "AI Agent";
       }
 
+      // Prepare AI Agent data
+      Map<String, dynamic> aiAgentData = {};
+      if (subscriptions.containsKey('ai_agent')) {
+        aiAgentData = {
+          'planType': subscriptions['ai_agent']['planType'],
+          'aiTotalSeconds': subscriptions['ai_agent']['aiTotalSeconds'],
+          'aiUsedSeconds': 0, // Reset when new plan purchased
+          'aiEnabled': true,
+        };
+      }
+
+      // Prepare Community voice call data
+      Map<String, dynamic> communityVoiceData = {};
+      if (subscriptions.containsKey('community')) {
+        communityVoiceData = {
+          'voiceTotalMinutes': subscriptions['community']['voiceTotalMinutes'],
+          'voiceUsedMinutes': 0, // Reset when new plan purchased
+          'voiceEnabled': true,
+          'communityPlan':
+              widget.selectedDuration == "1 Month" ? "1_MONTH" : "6_MONTH",
+        };
+      }
+
       // --- Update USERS table ---
-      await FirebaseFirestore.instance.collection("users").doc(userId).update({
+      Map<String, dynamic> updateData = {
         "package": packageName, // Display package name
         "subscriptions": subscriptions, // Individual subscription tracking
         "duration": widget.selectedDuration,
@@ -673,7 +730,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
         "firstName": firstNameController.text.trim(),
         "lastName": lastNameController.text.trim(),
         "updatedAt": FieldValue.serverTimestamp(),
-      });
+      };
+
+      // Add AI Agent fields if applicable
+      if (aiAgentData.isNotEmpty) {
+        updateData.addAll(aiAgentData);
+      }
+
+      // Add Community voice call fields if applicable
+      if (communityVoiceData.isNotEmpty) {
+        updateData.addAll(communityVoiceData);
+      }
+
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .update(updateData);
 
       // --- Add PAYMENT record ---
       await FirebaseFirestore.instance.collection("payments").add({
@@ -703,6 +775,148 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _showErrorDialog(
           "Error", "Payment successful but failed to update records: $e");
     }
+  }
+
+  // Handle voice top-up purchase
+  Future<void> _handleVoiceTopupPurchase(
+      String userId, String orderId, String paymentId) async {
+    try {
+      // Extract minutes from selected duration (e.g., "300 minutes" -> 300)
+      int minutesToAdd =
+          int.parse(widget.selectedDuration.replaceAll(RegExp(r'[^0-9]'), ''));
+
+      // Get current user data
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(userId)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception("User not found");
+      }
+
+      final data = userDoc.data()!;
+      int currentTotal = data['voiceTotalMinutes'] ?? 0;
+
+      // Add new minutes to total
+      int newTotal = currentTotal + minutesToAdd;
+
+      // Update user document
+      await FirebaseFirestore.instance.collection("users").doc(userId).update({
+        'voiceTotalMinutes': newTotal,
+        'voiceEnabled': true, // Re-enable if it was disabled
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Add payment record
+      await FirebaseFirestore.instance.collection("payments").add({
+        "userId": userId,
+        "orderId": orderId,
+        "paymentId": paymentId,
+        "plan": widget.selectedPlan,
+        "duration": widget.selectedDuration,
+        "amount": widget.price,
+        "currency": "LKR",
+        "status": "paid",
+        "type": "voice_topup",
+        "minutesAdded": minutesToAdd,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        isProcessing = false;
+      });
+
+      // Show success dialog for voice top-up
+      _showVoiceTopupSuccessDialog(minutesToAdd, newTotal);
+    } catch (e) {
+      debugPrint("Error processing voice top-up: $e");
+      setState(() {
+        isProcessing = false;
+      });
+      _showErrorDialog(
+          "Error", "Payment successful but failed to update voice minutes: $e");
+    }
+  }
+
+  // Show voice top-up success dialog
+  void _showVoiceTopupSuccessDialog(int minutesAdded, int newTotal) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 12),
+            Text("Top-Up Successful! 🎉"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Your voice minutes have been added!",
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE9F1F4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Minutes Added:",
+                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      Text(
+                        "+$minutesAdded min",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("New Total:",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        "$newTotal min",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4A90A4),
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Close payment screen
+              Navigator.pop(context); // Close voice top-up screen
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   // Show success dialog

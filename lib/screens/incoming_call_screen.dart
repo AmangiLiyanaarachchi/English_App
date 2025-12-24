@@ -47,6 +47,27 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
 
     // Play ringtone
     RingtoneService.playRingtone();
+
+    // Listen for call status changes (e.g., caller cancels)
+    _listenToCallStatus();
+  }
+
+  void _listenToCallStatus() {
+    _signalingService
+        .listenToCallStatus(widget.call.callId)
+        .listen((updatedCall) {
+      if (updatedCall != null &&
+          (updatedCall.status == 'cancelled' ||
+              updatedCall.status == 'ended')) {
+        // Caller cancelled or ended the call before receiver picked up
+        print(
+            '📱 INCOMING: Call status changed to ${updatedCall.status}, closing screen');
+        RingtoneService.stopRingtone();
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+      }
+    });
   }
 
   @override

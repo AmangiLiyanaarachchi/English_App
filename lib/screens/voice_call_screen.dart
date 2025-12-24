@@ -5,17 +5,21 @@ import '../models/call_model.dart';
 import '../services/call_signaling_service.dart';
 import '../services/agora_service.dart';
 import '../services/call_history_service.dart';
+import '../services/random_call_service.dart';
+import '../services/voice_minutes_service.dart';
 import '../models/call_history_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class VoiceCallScreen extends StatefulWidget {
   final CallModel call;
   final bool isOutgoing;
+  final bool isRandomCall; // NEW: Track if this is a random call
 
   const VoiceCallScreen({
     Key? key,
     required this.call,
     required this.isOutgoing,
+    this.isRandomCall = false, // Default to false
   }) : super(key: key);
 
   @override
@@ -26,6 +30,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   final CallSignalingService _signalingService = CallSignalingService();
   final AgoraService _agoraService = AgoraService();
   final CallHistoryService _historyService = CallHistoryService();
+  final RandomCallService _randomCallService = RandomCallService(); // NEW
 
   bool _isMuted = false;
   bool _isSpeakerOn = true;
@@ -33,6 +38,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   int _callDuration = 0;
   Timer? _durationTimer;
   Timer? _timeoutTimer;
+  Timer? _maxCallTimer; // NEW: Timer for 3-minute limit
   StreamSubscription? _callStatusSubscription;
   StreamSubscription? _userJoinedSubscription;
   bool _isCallConnected = false;
@@ -116,7 +122,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
     }
   }
 
-  void _startDurationTimer() {
+  void _startDurationTimer() async {
     _durationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -124,6 +130,48 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
         });
       }
     });
+
+    // NEW: Start timer for random calls based on remaining time
+    if (widget.isRandomCall) {
+      // Get remaining time for this user
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final permission =
+            await _randomCallService.checkRandomCallPermission(currentUser.uid);
+        final remainingSeconds = permission['remainingSeconds'] as int;
+
+        if (remainingSeconds > 0) {
+          _maxCallTimer = Timer(
+            Duration(seconds: remainingSeconds),
+            () {
+              if (mounted && !_isEnding) {
+                print('⏰ Random call time limit reached - auto ending call');
+                _showTimeLimitMessage();
+                _endCall();
+              }
+            },
+          );
+          print(
+              '⏱️ Timer started for random call - $remainingSeconds seconds remaining');
+        } else {
+          // No time left, end immediately
+          print('⏰ No random call time remaining - ending call');
+          _endCall();
+        }
+      }
+    }
+  }
+
+  void _showTimeLimitMessage() {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Call ended - time limit reached'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   String _formatDuration(int seconds) {
@@ -164,15 +212,45 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
       // Stop timers
       _durationTimer?.cancel();
       _timeoutTimer?.cancel();
+      _maxCallTimer?.cancel(); // NEW: Cancel 3-minute timer
 
       // Update call status in Firestore
-      await _signalingService.endCall(widget.call.callId);
+      // If call was never connected and caller is ending, mark as cancelled
+      print(
+          '📞 ENDING CALL: isConnected=$_isCallConnected, isOutgoing=${widget.isOutgoing}');
+      if (!_isCallConnected && widget.isOutgoing) {
+        print(
+            '📞 CANCELLING CALL: Caller ending before connection - setting status to cancelled');
+        await _signalingService.cancelCall(widget.call.callId);
+        print('✅ Call status updated to CANCELLED in Firestore');
+      } else {
+        print('📞 ENDING CALL: Normal end - setting status to ended');
+        await _signalingService.endCall(widget.call.callId);
+      }
 
       // Leave Agora channel
       await _agoraService.leaveChannel();
 
-      // Save to call history
+      // NEW: Add call duration to user's total time if this was a random call
       final currentUser = FirebaseAuth.instance.currentUser;
+      if (widget.isRandomCall && currentUser != null && _callDuration > 0) {
+        // Only count if call was connected (duration > 0)
+        await _randomCallService.addCallDuration(
+            currentUser.uid, _callDuration);
+        print(
+            '📊 Random call duration added: $_callDuration seconds for user: ${currentUser.uid}');
+      }
+
+      // NEW: Add call duration to voice minutes for Community Plan users
+      if (!widget.isRandomCall && currentUser != null && _callDuration > 0) {
+        // Track voice minutes for regular calls (not random calls)
+        await VoiceMinutesService.addCallDuration(
+            currentUser.uid, _callDuration);
+        print(
+            '🎤 Voice call duration added: $_callDuration seconds for user: ${currentUser.uid}');
+      }
+
+      // Save to call history
       if (currentUser != null) {
         final callType =
             widget.call.callerId == currentUser.uid ? 'outgoing' : 'incoming';
@@ -222,6 +300,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
     print('VoiceCallScreen disposing...');
     _durationTimer?.cancel();
     _timeoutTimer?.cancel();
+    _maxCallTimer?.cancel(); // NEW: Cancel 3-minute timer
     _callStatusSubscription?.cancel();
     _userJoinedSubscription?.cancel();
     // Call leaveChannel without await - it will complete asynchronously

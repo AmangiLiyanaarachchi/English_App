@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'payment_screen.dart';
+import 'voice_topup_screen.dart';
 
 class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
@@ -297,86 +298,170 @@ class _PremiumScreenState extends State<PremiumScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.12),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              )
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Choose a plan",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              _buildPlanBox(
-                planName: "Community Plan",
-                description:
-                    "Chats, calls, group activities and community access.",
-              ),
-              const SizedBox(height: 12),
-              _buildPlanBox(
-                planName: "AI Agent",
-                description: "AI answers, grammar help, 24/7 English support.",
-              ),
-              // const SizedBox(height: 12),
-              // _buildPlanBox(
-              //   planName: "Community + AI Agent",
-              //   description: "Full community access + AI Agent support.",
-              // ),
-              const SizedBox(height: 20),
-
-              // Continue button only for non-Community plans
-              // if (selectedPlan != "Community Plan")
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: (selectedPlan.isEmpty || selectedDuration.isEmpty)
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PaymentScreen(
-                                selectedPlan: selectedPlan,
-                                price: selectedPrice,
-                                selectedDuration: selectedDuration,
+        child: Column(
+          children: [
+            // Voice Top-Up Button (Only show if user has Community Plan)
+            if (hasCommunity)
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const VoiceTopupScreen(),
+                    ),
+                  ).then((_) => _loadActiveSubscription());
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [mainColor.withOpacity(0.8), mainColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: mainColor.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.add_call,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Add Voice Minutes",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          );
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        (selectedPlan.isEmpty || selectedDuration.isEmpty)
-                            ? Colors.grey
-                            : mainColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Text(
-                    (selectedPlan.isEmpty || selectedDuration.isEmpty)
-                        ? "CONTINUE"
-                        : "CONTINUE — $selectedDuration • LKR ${selectedPrice.toInt()}",
-                    style: const TextStyle(
+                            SizedBox(height: 4),
+                            Text(
+                              "Top-up your voice call minutes",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Choose a plan",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlanBox(
+                    planName: "Community Plan",
+                    description:
+                        "Chats, calls, group activities and community access.",
+                  ),
+                  const SizedBox(height: 12),
+                  _buildPlanBox(
+                    planName: "AI Agent",
+                    description:
+                        "AI answers, grammar help, 24/7 English support.",
+                  ),
+                  // const SizedBox(height: 12),
+                  // _buildPlanBox(
+                  //   planName: "Community + AI Agent",
+                  //   description: "Full community access + AI Agent support.",
+                  // ),
+                  const SizedBox(height: 20),
+
+                  // Continue button only for non-Community plans
+                  // if (selectedPlan != "Community Plan")
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed:
+                          (selectedPlan.isEmpty || selectedDuration.isEmpty)
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PaymentScreen(
+                                        selectedPlan: selectedPlan,
+                                        price: selectedPrice,
+                                        selectedDuration: selectedDuration,
+                                      ),
+                                    ),
+                                  );
+                                },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            (selectedPlan.isEmpty || selectedDuration.isEmpty)
+                                ? Colors.grey
+                                : mainColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        (selectedPlan.isEmpty || selectedDuration.isEmpty)
+                            ? "CONTINUE"
+                            : "CONTINUE — $selectedDuration • LKR ${selectedPrice.toInt()}",
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -475,12 +560,14 @@ class _PremiumScreenState extends State<PremiumScreen> {
                     : [
                         _buildInnerPackageBox(
                           label: "1000 Credits",
+                          subtitle: "20 minutes",
                           price: 1500,
                           plan: planName,
                         ),
                         const SizedBox(width: 12),
                         _buildInnerPackageBox(
                           label: "2500 Credits",
+                          subtitle: "45 minutes",
                           price: 3000,
                           plan: planName,
                         ),
@@ -559,6 +646,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     required String label,
     required double price,
     required String plan,
+    String? subtitle,
   }) {
     bool isSelected = selectedPlan == plan && selectedDuration == label;
 
@@ -585,6 +673,18 @@ class _PremiumScreenState extends State<PremiumScreen> {
                   color: isSelected ? mainColor : Colors.black87,
                 ),
               ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSelected
+                        ? mainColor.withOpacity(0.8)
+                        : Colors.black45,
+                  ),
+                ),
+              ],
               const SizedBox(height: 6),
               Text(
                 "LKR ${price.toInt()}",

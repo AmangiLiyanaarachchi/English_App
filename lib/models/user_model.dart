@@ -46,8 +46,14 @@ class UserModel {
   final bool isOnline;
   final DateTime? lastSeen;
 
-  // 🔥 ADD THIS
+  // Premium package
   final String? package;
+
+  // AI Agent fields
+  final String? planType; // "AI_1000" | "AI_2500" | "FREE"
+  final int? aiTotalSeconds; // Total allowed seconds (1200 or 2700)
+  final int? aiUsedSeconds; // Already used seconds
+  final bool? aiEnabled; // Can access AI Agent or not
 
   UserModel({
     required this.uid,
@@ -57,8 +63,14 @@ class UserModel {
     this.isOnline = false,
     this.lastSeen,
 
-    // 🔥 ADD THIS
+    // Premium package
     this.package,
+
+    // AI Agent fields
+    this.planType,
+    this.aiTotalSeconds,
+    this.aiUsedSeconds,
+    this.aiEnabled,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
@@ -72,8 +84,14 @@ class UserModel {
           ? DateTime.fromMillisecondsSinceEpoch(map['lastSeen'])
           : null,
 
-      // 🔥 READ FROM FIRESTORE
+      // Read from Firestore
       package: map['package'],
+
+      // AI Agent fields
+      planType: map['planType'],
+      aiTotalSeconds: map['aiTotalSeconds'],
+      aiUsedSeconds: map['aiUsedSeconds'],
+      aiEnabled: map['aiEnabled'],
     );
   }
 
@@ -85,8 +103,14 @@ class UserModel {
       'isOnline': isOnline,
       'lastSeen': lastSeen?.millisecondsSinceEpoch,
 
-      // 🔥 WRITE TO FIRESTORE
+      // Write to Firestore
       'package': package,
+
+      // AI Agent fields
+      'planType': planType,
+      'aiTotalSeconds': aiTotalSeconds,
+      'aiUsedSeconds': aiUsedSeconds,
+      'aiEnabled': aiEnabled,
     };
   }
 }
