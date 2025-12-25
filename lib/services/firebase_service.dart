@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'dart:typed_data';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import '../models/user.dart';
+
 import '../models/message.dart';
 import '../models/recording.dart';
+import '../models/user.dart';
 import 'google_auth_service.dart';
 
 class FirebaseService {
@@ -293,5 +296,12 @@ class FirebaseService {
     await _firestore.collection('users').doc(uid).update({
       'badges': FieldValue.arrayUnion([badge]),
     });
+  }
+
+  Future<String> uploadProfileImage(String uid, File image) async {
+    final ref = _storage.ref().child('profile_pictures/$uid.jpg');
+
+    await ref.putFile(image);
+    return await ref.getDownloadURL();
   }
 }

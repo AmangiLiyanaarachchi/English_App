@@ -900,26 +900,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    streak == 0
-                                        ? 'Start today'
-                                        : '$streak/7 Days',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.orange.shade800,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                                // Container(
+                                //   padding: const EdgeInsets.symmetric(
+                                //     horizontal: 12,
+                                //     vertical: 4,
+                                //   ),
+                                //   decoration: BoxDecoration(
+                                //     color: Colors.orange.shade50,
+                                //     borderRadius: BorderRadius.circular(12),
+                                //   ),
+                                //   // child: Text(
+                                //   //   streak == 0
+                                //   //       ? 'Start today'
+                                //   //       : '$streak/7 Days',
+                                //   //   style: TextStyle(
+                                //   //     fontSize: 12,
+                                //   //     color: Colors.orange.shade800,
+                                //   //     fontWeight: FontWeight.w600,
+                                //   //   ),
+                                //   // ),
+                                // ),
                               ],
                             ),
                             const SizedBox(height: 16),
@@ -1397,10 +1397,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return GestureDetector(
                 onTap: () {
+                  // 🔑 Get ALL statuses of this user
+                  final userStatuses = snapshot.data!
+                      .where((s) => s.ownerId == status.ownerId)
+                      .toList();
+
+                  if (userStatuses.isEmpty) return;
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => StatusDetailScreen(status: status),
+                      builder: (_) => StatusDetailScreen(
+                        statuses: userStatuses,
+                      ),
                     ),
                   );
                 },

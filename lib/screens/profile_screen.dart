@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:english_circle/screens/premium_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/recording.dart';
 import '../models/user.dart' as models;
@@ -124,6 +127,61 @@ class _ProfileScreenState extends State<ProfileScreen>
         print('❌ [ProfileScreen] No Firebase Auth user found');
       }
     }
+  }
+
+  Future<void> _editDisplayName() async {
+    final controller =
+        TextEditingController(text: _userProfile?.displayName ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit Name'),
+        content: TextField(
+          controller: controller,
+          maxLength: 30,
+          decoration: const InputDecoration(
+            hintText: 'Enter your name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A90A4),
+            ),
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isEmpty) return;
+
+              Navigator.pop(context);
+
+              try {
+                await _firebaseService.updateUserProfile(
+                  _userProfile!.uid,
+                  {'displayName': newName},
+                );
+
+                if (mounted) {
+                  setState(() {
+                    _userProfile = _userProfile!.copyWith(displayName: newName);
+                  });
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to update name')),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _signOut() async {
@@ -303,21 +361,27 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     )
                                   : null,
                             ),
-                            // Positioned(
-                            //   right: 0,
-                            //   bottom: 0,
-                            //   child: Container(
-                            //     padding: const EdgeInsets.all(4),
-                            //     decoration: BoxDecoration(
-                            //       color: Colors.white,
-                            //       shape: BoxShape.circle,
-                            //       border:
-                            //           Border.all(color: Colors.grey.shade300),
-                            //     ),
-                            //     child: const Icon(Icons.camera_alt,
-                            //         size: 20, color: Colors.grey),
-                            //   ),
-                            // ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: GestureDetector(
+                                onTap: _updateProfilePicture,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 20,
+                                    color: Color(0xFF4A90A4),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -332,14 +396,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // IconButton(
-                            //   icon: const Icon(Icons.edit, size: 18),
-                            //   onPressed: () {
-                            //     // Edit name
-                            //   },
-                            //   padding: EdgeInsets.zero,
-                            //   constraints: const BoxConstraints(),
-                            // ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 18),
+                              onPressed: _editDisplayName,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
                           ],
                         ),
                         // const SizedBox(height: 8),
@@ -872,5 +934,43 @@ class _ProfileScreenState extends State<ProfileScreen>
   void dispose() {
     _tabController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateProfilePicture() async {
+    final picker = ImagePicker();
+
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+
+    if (pickedFile == null) return;
+
+    final file = File(pickedFile.path);
+
+    try {
+      final imageUrl = await _firebaseService.uploadProfileImage(
+        _userProfile!.uid,
+        file,
+      );
+
+      await _firebaseService.updateUserProfile(
+        _userProfile!.uid,
+        {'photoUrl': imageUrl},
+      );
+
+      if (mounted) {
+        setState(() {
+          _userProfile = _userProfile!.copyWith(photoUrl: imageUrl);
+        });
+      }
+    } catch (e, stack) {
+      debugPrint('❌ Profile picture upload error: $e');
+      debugPrintStack(stackTrace: stack);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+    }
   }
 }

@@ -624,8 +624,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: const Color(0xFF4A90A4),
-        child: Text(name[0].toUpperCase(),
-            style: const TextStyle(color: Colors.white)),
+        backgroundImage:
+            user!.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+        child: user.photoUrl == null
+            ? Text(
+                user.displayName.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : null,
       ),
       title: Text(name),
       subtitle: Text(
@@ -671,8 +680,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: const Color(0xFF4A90A4),
-            child: Text(user.displayName[0].toUpperCase(),
-                style: const TextStyle(color: Colors.white)),
+            backgroundImage:
+                user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+            child: user.photoUrl == null
+                ? Text(
+                    user.displayName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           title: Text(user.displayName),
           subtitle: Text(
