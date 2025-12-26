@@ -70,16 +70,21 @@ class _PremiumScreenState extends State<PremiumScreen> {
               }
             }
 
-            // Check AI Agent subscription
-            if (subscriptions['ai_agent'] != null) {
-              final aiSub = subscriptions['ai_agent'];
-              if (aiSub['expiryDate'] != null) {
-                DateTime expiry = (aiSub['expiryDate'] as Timestamp).toDate();
-                if (expiry.isAfter(DateTime.now())) {
-                  hasAIAgent = true;
-                  aiAgentExpiry = expiry;
-                }
-              }
+            // Check AI Agent subscription (time-based, not expiry-based)
+            // AI Agent uses aiEnabled and remaining time instead of expiry date
+            bool aiEnabled = data?['aiEnabled'] ?? false;
+            int aiTotalSeconds = data?['aiTotalSeconds'] ?? 0;
+            int aiUsedSeconds = data?['aiUsedSeconds'] ?? 0;
+            int aiRemainingSeconds = aiTotalSeconds - aiUsedSeconds;
+
+            // Only consider AI Agent active if enabled AND has remaining time
+            if (aiEnabled && aiRemainingSeconds > 0) {
+              hasAIAgent = true;
+              // AI Agent doesn't have expiry date, set to null
+              aiAgentExpiry = null;
+            } else {
+              hasAIAgent = false;
+              aiAgentExpiry = null;
             }
           }
         }
@@ -208,8 +213,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
           "You can renew or purchase this plan again after it expires.";
     } else if (planName == "AI Agent" && hasAIAgent) {
       message = "You already have an active AI Agent subscription.\n\n"
-          "Expiry date: ${aiAgentExpiry?.toString().split(' ')[0]}\n\n"
-          "You can renew or purchase this plan again after it expires.";
+          "You still have remaining time available.\n\n"
+          "You can renew or purchase this plan again after your time runs out.";
     } else {
       // Fallback (should not normally happen)
       message = "This plan is currently not available.";

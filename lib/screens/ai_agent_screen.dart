@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'premium_screen.dart';
 
 class AIAgentScreen extends StatefulWidget {
   const AIAgentScreen({super.key});
@@ -97,7 +98,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     }
   }
 
-  /// Show error dialog and exit
+  /// Show error dialog and redirect to premium
   void _showErrorAndExit(String message) {
     showDialog(
       context: context,
@@ -109,7 +110,14 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Exit screen
+              Navigator.pop(context); // Exit AI Agent screen
+              // Navigate to Premium Screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PremiumScreen(),
+                ),
+              );
             },
             child: const Text("OK"),
           ),
@@ -150,7 +158,14 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Exit screen
+              Navigator.pop(context); // Exit AI Agent screen
+              // Navigate to Premium Screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PremiumScreen(),
+                ),
+              );
             },
             child: const Text("OK"),
           ),
