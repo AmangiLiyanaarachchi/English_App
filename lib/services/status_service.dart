@@ -103,20 +103,24 @@ class StatusService {
 
   // Add comment to status
   Future<void> addComment(String statusId, String comment) async {
-    if (currentUser == null) throw Exception('User not logged in');
+  if (currentUser == null) throw Exception('User not logged in');
 
-    await _firestore.collection('status').doc(statusId).update({
-      'comments': FieldValue.arrayUnion([
-        {
-          'uid': currentUser!.uid,
-          'comment': comment,
-          'userName': currentUser!.displayName ?? 'User',
-          'userPhoto': currentUser!.photoURL ?? '',
-          'commentedAt': Timestamp.now(),
-        }
-      ])
-    });
-  }
+  final statusRef = _firestore.collection('status').doc(statusId);
+
+  await statusRef.update({
+    'comments': FieldValue.arrayUnion([
+      {
+        'uid': currentUser!.uid,
+        'comment': comment,
+        'userName': currentUser!.displayName ?? 'User',
+        'userPhoto': currentUser!.photoURL ?? '',
+        'commentedAt': Timestamp.now(),
+      }
+    ]),
+    'commentCount': FieldValue.increment(1), // ✅ ADD THIS
+  });
+}
+
 
   // Delete status
   Future<void> deleteStatus(String statusId) async {
@@ -182,4 +186,34 @@ class StatusService {
           .toList();
     });
   }
+
+  Future<void> updateUserInfoInStatuses({
+  required String userId,
+  required String newName,
+  required String newPhoto,
+}) async {
+  final snapshot = await _firestore
+      .collection('status') // ✅ CORRECT
+      .where('ownerId', isEqualTo: userId)
+      .get();
+
+  if (snapshot.docs.isEmpty) {
+    print('⚠️ No statuses found for user');
+    return;
+  }
+
+ 
+  final batch = _firestore.batch();
+
+  for (final doc in snapshot.docs) {
+    batch.update(doc.reference, {
+      'ownerName': newName,
+      'ownerPhoto': newPhoto,
+    });
+  }
+
+  await batch.commit();
+  print('✅ Updated ${snapshot.docs.length} statuses');
+}
+
 }

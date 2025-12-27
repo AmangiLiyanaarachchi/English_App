@@ -1397,7 +1397,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               return GestureDetector(
                 onTap: () {
-                  // 🔑 Get ALL statuses of this user
                   final userStatuses = snapshot.data!
                       .where((s) => s.ownerId == status.ownerId)
                       .toList();
@@ -1409,6 +1408,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     MaterialPageRoute(
                       builder: (_) => StatusDetailScreen(
                         statuses: userStatuses,
+                        initialIndex: 0, otherUserId: status.ownerId, // 👈 start from latest
                       ),
                     ),
                   );

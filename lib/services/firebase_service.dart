@@ -128,7 +128,7 @@ class FirebaseService {
   Future<UserModel?> findMatchingPartner(UserModel currentUser) async {
     final query = _firestore
         .collection('users')
-        .where('instituteCode', isEqualTo: currentUser.instituteCode)
+        //.where('instituteCode', isEqualTo: currentUser.instituteCode)
         .where('isOnline', isEqualTo: true)
         .where('uid', isNotEqualTo: currentUser.uid);
 
@@ -304,4 +304,5 @@ class FirebaseService {
     await ref.putFile(image);
     return await ref.getDownloadURL();
   }
+  
 }

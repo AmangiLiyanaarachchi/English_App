@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
           uid: credential.user!.uid,
           email: _emailController.text.trim(),
           displayName: _nameController.text.trim(),
-          instituteCode: _instituteCodeController.text.trim().toUpperCase(),
+          //instituteCode: _instituteCodeController.text.trim().toUpperCase(),
           englishLevel: _selectedLevel,
           interests: _selectedInterests,
           createdAt: DateTime.now(),

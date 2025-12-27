@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:english_circle/screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -18,6 +19,8 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
   InAppWebViewController? webViewController;
   bool _isPermissionGranted = false;
   bool _isLoading = true;
+  bool _termsAccepted = false;
+  bool _checkingTerms = true;
 
   // Time tracking variables
   DateTime? startTime;
@@ -54,19 +57,79 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
   }
 
   /// Check AI access and permissions together
-  Future<void> _checkAccessAndPermissions() async {
-    // First check AI access
-    final accessGranted = await _checkAIAccess();
+  // Future<void> _checkAccessAndPermissions() async {
+  //   // First check AI access
+  //   final accessGranted = await _checkAIAccess();
 
-    if (!accessGranted) {
-      return; // Exit if no AI access
+  //   if (!accessGranted) {
+  //     return; // Exit if no AI access
+  //   }
+
+  //   // Then check microphone permission
+  //   await _checkPermission();
+  // }
+  Future<void> _checkAccessAndPermissions() async {
+    final accepted = await _checkAndHandleTerms();
+
+    if (!accepted) {
+      return; // Stop everything until accepted
     }
 
-    // Then check microphone permission
+    final accessGranted = await _checkAIAccess();
+    if (!accessGranted) return;
+
     await _checkPermission();
   }
 
   /// Check if user has AI access and start timer
+  // Future<bool> _checkAIAccess() async {
+  //   try {
+  //     final user = FirebaseAuth.instance.currentUser;
+  //     if (user == null) {
+  //       _showErrorAndExit("Please login first");
+  //       return false;
+  //     }
+
+  //     final userDoc = await FirebaseFirestore.instance
+  //         .collection("users")
+  //         .doc(user.uid)
+  //         .get();
+
+  //     if (!userDoc.exists) {
+  //       _showErrorAndExit("User profile not found");
+  //       return false;
+  //     }
+
+  //     final data = userDoc.data()!;
+  //     bool aiEnabled = data['aiEnabled'] ?? false;
+  //     int aiTotalSeconds = data['aiTotalSeconds'] ?? 0;
+  //     int aiUsedSeconds = data['aiUsedSeconds'] ?? 0;
+  //     planType = data['planType'] ?? "FREE";
+
+  //     // Calculate remaining time
+  //     remainingSeconds = aiTotalSeconds - aiUsedSeconds;
+  //     totalSeconds = aiTotalSeconds;
+
+  //     // Check if user can access
+  //     if (!aiEnabled || remainingSeconds <= 0) {
+  //       _showErrorAndExit(
+  //           "Your AI Agent minutes are finished.\nUpgrade to continue.");
+  //       return false;
+  //     }
+
+  //     // Access granted - start timer
+  //     startTime = DateTime.now();
+  //     hasAIAccess = true;
+
+  //     // Start countdown timer
+  //     _startCountdown();
+
+  //     return true;
+  //   } catch (e) {
+  //     _showErrorAndExit("Error: $e");
+  //     return false;
+  //   }
+  // }
   Future<bool> _checkAIAccess() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -91,27 +154,49 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
       int aiUsedSeconds = data['aiUsedSeconds'] ?? 0;
       planType = data['planType'] ?? "FREE";
 
-      // Calculate remaining time
       remainingSeconds = aiTotalSeconds - aiUsedSeconds;
       totalSeconds = aiTotalSeconds;
 
-      // Check if user can access
       if (!aiEnabled || remainingSeconds <= 0) {
         _showErrorAndExit(
             "Your AI Agent minutes are finished.\nUpgrade to continue.");
         return false;
       }
 
-      // Access granted - start timer
       startTime = DateTime.now();
       hasAIAccess = true;
 
-      // Start countdown timer
       _startCountdown();
 
       return true;
     } catch (e) {
       _showErrorAndExit("Error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> _checkAndHandleTerms() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final data = doc.data() ?? {};
+      final accepted = data['aiTermsAccepted'] ?? false;
+
+      if (accepted == true) {
+        return true;
+      }
+
+      // ⛔ Wait for user decision
+      final agreed = await _showTermsDialog(user.uid);
+      return agreed;
+    } catch (e) {
+      _showErrorAndExit("Failed to load terms");
       return false;
     }
   }
@@ -274,7 +359,7 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
       return Scaffold(
         appBar: AppBar(
           title: const Text("English AI Coach"),
-          backgroundColor: const Color(0xFF4A90A4),
+          //backgroundColor: const Color(0xFF4A90A4),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -303,49 +388,80 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            "English AI Coach",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: const Color(0xFF4A90A4),
-          actions: [
-            // Timer display
-            if (hasAIAccess)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: remainingSeconds < 300
-                          ? Colors.red.shade700
-                          : Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.timer,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatTime(remainingSeconds),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
+  title: const Text(
+    "English AI Coach",
+    style: TextStyle(fontWeight: FontWeight.bold),
+  ),
+  actions: [
+    if (hasAIAccess)
+      Row(
+        children: [
+          // ⏱ Timer UI
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: remainingSeconds < 300
+                  ? Colors.red.shade700
+                  : const Color(0xFF4A90A4),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.timer,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _formatTime(remainingSeconds),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
+              ],
+            ),
+          ),
+
+          // 🛑 END Button (UI only)
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: ElevatedButton(
+              onPressed: () {
+                    Navigator.pop(context, false);
+
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      (route) => false,
+                    );
+                  }, // UI ONLY
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                disabledBackgroundColor: Colors.red,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 0,
               ),
-          ],
-        ),
+              child: const Text(
+                "END",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+  ],
+),
+
         body: Column(
           children: [
             // Progress bar
@@ -485,6 +601,128 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
       onConsoleMessage: (controller, consoleMessage) {
         debugPrint("Console: ${consoleMessage.message}");
       },
+    );
+  }
+
+  Future<bool> _showTermsDialog(String uid) async {
+    bool isChecked = false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                "AI Agent – Terms & Conditions",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Before using the AI English Coach, please read and agree:",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildBullet("AI conversations may be recorded."),
+                    _buildBullet("Do not share sensitive information."),
+                    _buildBullet("AI responses are for learning support only."),
+                    _buildBullet(
+                      "Your usage time will be deducted. Before leaving the AI Agent, please press the End button. Your limited time will be deducted if you don’t press the End button.",
+                    ),
+                    _buildBullet("Misuse may restrict access."),
+
+                    const SizedBox(height: 16),
+
+                    // ✅ Checkbox
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(
+                          value: isChecked,
+                          onChanged: (value) {
+                            setState(() {
+                              isChecked = value ?? false;
+                            });
+                          },
+                        ),
+                        const Expanded(
+                          child: Text(
+                            "I have read and agree to the Terms & Conditions",
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text("Decline"),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isChecked ? const Color(0xFF4A90A4) : Colors.grey,
+                  ),
+                  onPressed: isChecked
+                      ? () async {
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(uid)
+                              .update({'aiTermsAccepted': true});
+
+                          Navigator.pop(context, true);
+                        }
+                      : null,
+                  child: const Text("I Agree"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+  Widget _buildBullet(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Icon(
+              Icons.circle,
+              size: 6,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

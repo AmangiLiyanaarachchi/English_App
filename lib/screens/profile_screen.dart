@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:english_circle/screens/premium_screen.dart';
+import 'package:english_circle/services/status_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -71,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             email: user.email ?? '',
             displayName: user.displayName ?? 'User',
             photoUrl: user.photoURL,
-            instituteCode: '',
+            //instituteCode: '',
             createdAt: DateTime.now(),
             englishLevel: models.EnglishLevel.beginner,
             interests: [],
@@ -110,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             email: user.email ?? '',
             displayName: user.displayName ?? 'User',
             photoUrl: user.photoURL,
-            instituteCode: '',
+            //instituteCode: '',
             createdAt: DateTime.now(),
             englishLevel: models.EnglishLevel.beginner,
             interests: [],
@@ -162,9 +163,22 @@ class _ProfileScreenState extends State<ProfileScreen>
 
               try {
                 await _firebaseService.updateUserProfile(
-                  _userProfile!.uid,
-                  {'displayName': newName},
-                );
+  _userProfile!.uid,
+  {'displayName': newName},
+);
+
+// 🔥 ADD THIS
+await StatusService().updateUserInfoInStatuses(
+  userId: _userProfile!.uid,
+  newName: newName,
+  newPhoto: _userProfile!.photoUrl ?? '',
+);
+
+setState(() {
+  _userProfile = _userProfile!.copyWith(displayName: newName);
+});
+
+                
 
                 if (mounted) {
                   setState(() {
@@ -955,9 +969,21 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
 
       await _firebaseService.updateUserProfile(
-        _userProfile!.uid,
-        {'photoUrl': imageUrl},
-      );
+  _userProfile!.uid,
+  {'photoUrl': imageUrl},
+);
+
+// 🔥 ADD THIS
+await StatusService().updateUserInfoInStatuses(
+  userId: _userProfile!.uid,
+  newName: _userProfile!.displayName,
+  newPhoto: imageUrl,
+);
+
+setState(() {
+  _userProfile = _userProfile!.copyWith(photoUrl: imageUrl);
+});
+
 
       if (mounted) {
         setState(() {

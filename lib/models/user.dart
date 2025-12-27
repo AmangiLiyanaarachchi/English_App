@@ -6,7 +6,7 @@ class UserModel {
   final String uid;
   final String email;
   final String displayName;
-  final String instituteCode;
+  //final String instituteCode;
   final EnglishLevel englishLevel;
   final List<String> interests;
   final String? photoUrl;
@@ -26,7 +26,7 @@ class UserModel {
     required this.uid,
     required this.email,
     required this.displayName,
-    required this.instituteCode,
+    //required this.instituteCode,
     required this.englishLevel,
     required this.interests,
     this.photoUrl,
@@ -48,7 +48,7 @@ class UserModel {
       'uid': uid,
       'email': email,
       'displayName': displayName,
-      'instituteCode': instituteCode,
+      //'instituteCode': instituteCode,
       'englishLevel': englishLevel.name,
       'interests': interests,
       'photoUrl': photoUrl,
@@ -71,7 +71,7 @@ class UserModel {
       uid: json['uid'] ?? '',
       email: json['email'] ?? '',
       displayName: json['displayName'] ?? '',
-      instituteCode: json['instituteCode'] ?? '',
+      //instituteCode: json['instituteCode'] ?? '',
       englishLevel: EnglishLevel.values.firstWhere(
         (e) => e.name == json['englishLevel'],
         orElse: () => EnglishLevel.beginner,
@@ -125,7 +125,7 @@ class UserModel {
       uid: uid ?? this.uid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
-      instituteCode: instituteCode ?? this.instituteCode,
+      //instituteCode: instituteCode ?? this.instituteCode,
       englishLevel: englishLevel ?? this.englishLevel,
       interests: interests ?? this.interests,
       photoUrl: photoUrl ?? this.photoUrl,
