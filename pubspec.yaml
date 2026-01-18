@@ -25,7 +25,9 @@ dependencies:
   permission_handler: ^11.3.1
   
   # ML Kit for English detection
-  google_ml_kit: ^0.18.0
+  
+
+
   
   # State management
   provider: ^6.1.2
@@ -52,7 +54,7 @@ dependencies:
   country_picker: ^2.0.27
   
   # PayHere Payment Gateway
-  payhere_mobilesdk_flutter: ^3.0.8
+  payhere_mobilesdk_flutter: ^3.2.2
   crypto: ^3.0.3
 
 dev_dependencies:

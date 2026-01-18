@@ -15,9 +15,9 @@ class IncomingCallScreen extends StatefulWidget {
   final CallModel call;
 
   const IncomingCallScreen({
-    Key? key,
+    super.key,
     required this.call,
-  }) : super(key: key);
+  });
 
   @override
   State<IncomingCallScreen> createState() => _IncomingCallScreenState();
@@ -340,12 +340,12 @@ class _CallActionButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   const _CallActionButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.label,
     required this.backgroundColor,
     this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

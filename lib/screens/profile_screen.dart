@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   final _firebaseService = FirebaseService();
   models.UserModel? _userProfile;
-  List<Recording> _recordings = [];
+  final List<Recording> _recordings = [];
   TabController? _tabController;
 
   bool _hasAI(models.UserModel user) {
@@ -247,7 +247,7 @@ setState(() {
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
-        actions: [
+        actions: const [
           // IconButton(
           //   icon: const Icon(Icons.settings),
           //   onPressed: () {

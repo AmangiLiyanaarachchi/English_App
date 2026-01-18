@@ -52,9 +52,7 @@ class GoogleAuthService {
       GoogleSignInAccount? account = await signInSilently();
 
       // If no cached account, show the picker
-      if (account == null) {
-        account = await signIn();
-      }
+      account ??= await signIn();
 
       if (account == null) {
         print('ℹ️ [GoogleAuth] User cancelled sign-in');

@@ -6,7 +6,7 @@ import '../models/call_history_model.dart';
 import '../services/call_history_service.dart';
 
 class CallHistoryScreen extends StatefulWidget {
-  const CallHistoryScreen({Key? key}) : super(key: key);
+  const CallHistoryScreen({super.key});
 
   @override
   State<CallHistoryScreen> createState() => _CallHistoryScreenState();

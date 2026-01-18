@@ -887,19 +887,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         child: Column(
                           children: [
-                            Row(
+                            const Row(
                               children: [
-                                const Icon(Icons.local_fire_department,
+                                Icon(Icons.local_fire_department,
                                     color: Colors.orange, size: 24),
-                                const SizedBox(width: 8),
-                                const Text(
+                                SizedBox(width: 8),
+                                Text(
                                   'Weekly Streak',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const Spacer(),
+                                Spacer(),
                                 // Container(
                                 //   padding: const EdgeInsets.symmetric(
                                 //     horizontal: 12,

@@ -452,7 +452,7 @@ import '../services/chat_service.dart';
 import 'chat_detail_screen.dart';
 
 class ChatsListScreen extends StatefulWidget {
-  const ChatsListScreen({Key? key}) : super(key: key);
+  const ChatsListScreen({super.key});
 
   @override
   State<ChatsListScreen> createState() => _ChatsListScreenState();
@@ -494,9 +494,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: Align(
+        title: const Align(
           alignment: Alignment.center, // same as Alignment.start
-          child: const Text(
+          child: Text(
             'EnglishCircle',
             style: TextStyle(
               fontWeight: FontWeight.bold,
@@ -529,8 +529,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               },
               decoration: InputDecoration(
                 hintText: _showAllUsers ? 'Search users...' : 'Search chats...',
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 10),
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 14, right: 10),
                   child: Icon(Icons.search, color: Color(0xFF4A90A4)),
                 ),
                 prefixIconConstraints: const BoxConstraints(minWidth: 40),

@@ -16,11 +16,11 @@ class VoiceCallScreen extends StatefulWidget {
   final bool isRandomCall; // NEW: Track if this is a random call
 
   const VoiceCallScreen({
-    Key? key,
+    super.key,
     required this.call,
     required this.isOutgoing,
     this.isRandomCall = false, // Default to false
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceCallScreen> createState() => _VoiceCallScreenState();
@@ -486,12 +486,12 @@ class _CallControlButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const _CallControlButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.label,
     required this.isActive,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

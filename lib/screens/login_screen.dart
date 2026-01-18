@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
   bool _isLoading = false;
   EnglishLevel _selectedLevel = EnglishLevel.beginner;
-  List<String> _selectedInterests = [];
+  final List<String> _selectedInterests = [];
 
   final List<String> _interestOptions = [
     'Debate',
@@ -255,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                             // English Level
                             DropdownButtonFormField<EnglishLevel>(
-                              value: _selectedLevel,
+                              initialValue: _selectedLevel,
                               decoration: const InputDecoration(
                                 labelText: 'English Level',
                                 prefixIcon: Icon(Icons.bar_chart),

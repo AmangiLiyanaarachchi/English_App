@@ -252,7 +252,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.timer,
                         color: Colors.white,
                         size: 18,

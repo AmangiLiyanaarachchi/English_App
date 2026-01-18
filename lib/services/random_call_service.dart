@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RandomCallService {
   static final RandomCallService _instance = RandomCallService._internal();

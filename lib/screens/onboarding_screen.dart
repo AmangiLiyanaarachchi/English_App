@@ -662,14 +662,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   final List<Map<String, dynamic>> _interestOptions = [
-    {'icon': Icons.forum, 'label': 'Debate', 'color': Color(0xFFE76F51)},
-    {'icon': Icons.movie, 'label': 'Movies', 'color': Color(0xFFE9C46A)},
-    {'icon': Icons.music_note, 'label': 'Music', 'color': Color(0xFF2A9D8F)},
-    {'icon': Icons.computer, 'label': 'Technology', 'color': Color(0xFF264653)},
-    {'icon': Icons.sports_soccer, 'label': 'Sports', 'color': Color(0xFFF4A261)},
-    {'icon': Icons.flight, 'label': 'Travel', 'color': Color(0xFF8AB17D)},
-    {'icon': Icons.restaurant, 'label': 'Food', 'color': Color(0xFFE76F51)},
-    {'icon': Icons.book, 'label': 'Books', 'color': Color(0xFF577590)},
+    {'icon': Icons.forum, 'label': 'Debate', 'color': const Color(0xFFE76F51)},
+    {'icon': Icons.movie, 'label': 'Movies', 'color': const Color(0xFFE9C46A)},
+    {'icon': Icons.music_note, 'label': 'Music', 'color': const Color(0xFF2A9D8F)},
+    {'icon': Icons.computer, 'label': 'Technology', 'color': const Color(0xFF264653)},
+    {'icon': Icons.sports_soccer, 'label': 'Sports', 'color': const Color(0xFFF4A261)},
+    {'icon': Icons.flight, 'label': 'Travel', 'color': const Color(0xFF8AB17D)},
+    {'icon': Icons.restaurant, 'label': 'Food', 'color': const Color(0xFFE76F51)},
+    {'icon': Icons.book, 'label': 'Books', 'color': const Color(0xFF577590)},
   ];
 
   @override

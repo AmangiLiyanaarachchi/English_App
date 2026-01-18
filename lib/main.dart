@@ -1,13 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'firebase_options.dart';
+import 'models/call_history_model.dart';
+import 'models/chat_room_model.dart';
+import 'models/message_model.dart';
 import 'screens/google_sign_in_screen.dart';
 import 'screens/home_screen.dart';
-import 'models/message_model.dart';
-import 'models/chat_room_model.dart';
-import 'models/call_history_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

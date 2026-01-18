@@ -43,7 +43,7 @@ class AgoraService {
     }
 
     _engine = createAgoraRtcEngine();
-    await _engine!.initialize(RtcEngineContext(
+    await _engine!.initialize(const RtcEngineContext(
       appId: appId,
       channelProfile: ChannelProfileType.channelProfileCommunication,
     ));

@@ -23,8 +23,7 @@ import 'voice_topup_screen.dart';
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
 
-  const ChatDetailScreen({Key? key, required this.otherUserId})
-      : super(key: key);
+  const ChatDetailScreen({super.key, required this.otherUserId});
 
   @override
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
@@ -300,7 +299,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       final pathSegments = uri.pathSegments;
       String fileName = pathSegments.isNotEmpty
           ? pathSegments.last.split('?').first
-          : 'voice_${messageId}.aac';
+          : 'voice_$messageId.aac';
 
       // Remove URL encoding and path prefixes (voice_messages%2F or voice_messages/)
       fileName = fileName.replaceAll('voice_messages%2F', '');
@@ -541,7 +540,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     if (_otherUser == null) {
       return Align(
         alignment: Alignment.centerLeft,
-        child: Text(widget.otherUserId.substring(0, 8) + '...'),
+        child: Text('${widget.otherUserId.substring(0, 8)}...'),
       );
     }
 

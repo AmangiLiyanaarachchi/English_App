@@ -19,8 +19,8 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
   InAppWebViewController? webViewController;
   bool _isPermissionGranted = false;
   bool _isLoading = true;
-  bool _termsAccepted = false;
-  bool _checkingTerms = true;
+  final bool _termsAccepted = false;
+  final bool _checkingTerms = true;
 
   // Time tracking variables
   DateTime? startTime;

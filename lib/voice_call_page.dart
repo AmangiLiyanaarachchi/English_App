@@ -80,7 +80,7 @@ class _VoiceCallPageState extends State<VoiceCallPage> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("Channel: $channelName"),
+          const Text("Channel: $channelName"),
           const SizedBox(height: 16),
           Text("Remote users: ${_remoteUsers.join(", ")}"),
           const SizedBox(height: 32),

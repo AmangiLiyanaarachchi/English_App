@@ -282,8 +282,9 @@ class FirebaseService {
       {int? chats, int? minutes, int? karma}) async {
     final updates = <String, dynamic>{};
     if (chats != null) updates['totalChats'] = FieldValue.increment(chats);
-    if (minutes != null)
+    if (minutes != null) {
       updates['totalMinutes'] = FieldValue.increment(minutes);
+    }
     if (karma != null) updates['karmaPoints'] = FieldValue.increment(karma);
 
     if (updates.isNotEmpty) {
