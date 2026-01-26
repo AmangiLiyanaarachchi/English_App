@@ -1,14 +1,21 @@
 import 'dart:io';
 
 import 'package:english_circle/screens/premium_screen.dart';
+import 'package:english_circle/screens/voice_call_screen.dart';
 import 'package:english_circle/services/status_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/recording.dart';
 import '../models/user.dart' as models;
 import '../services/firebase_service.dart';
+import '../services/agora_service.dart';
+import '../services/call_signaling_service.dart';
+import '../services/firebase_service.dart';
+import '../services/random_call_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -25,7 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   models.UserModel? _userProfile;
   final List<Recording> _recordings = [];
   TabController? _tabController;
-
+  final _agoraService = AgoraService();
+  final _callSignalingService = CallSignalingService();
+  final _randomCallService = RandomCallService(); // NEW
+  int _currentIndex = 0;
+  models.UserModel? _currentUser;
+  bool _isLoading = false;
+  bool _isLoadingProfile = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _hasAI(models.UserModel user) {
     return user.package == "AI Agent" || user.package == "Community + AI Agent";
   }
@@ -211,6 +225,352 @@ setState(() {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign out failed: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  // Start random voice call
+  Future<void> _startRandomCall() async {
+    // Get current Firebase user
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to make calls')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // NEW: Check random call permission first
+      final permission =
+          await _randomCallService.checkRandomCallPermission(currentUser.uid);
+
+      if (!permission['canCall']) {
+        final totalSeconds = permission['totalSecondsUsed'] as int;
+        final totalMinutes = (totalSeconds / 60).toStringAsFixed(1);
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icon
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.timer_off,
+                        size: 50,
+                        color: Colors.red.shade400,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Title
+                    const Text(
+                      'Time Limit Reached',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2C3E50),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Message
+                    Text(
+                      'You have used all your random call time ($totalMinutes minutes).',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey[700],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orange.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 20,
+                            color: Colors.orange.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Random call feature is now disabled',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.orange.shade900,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // OK Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3498DB),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'OK',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show remaining time info
+      final remainingSeconds = permission['remainingSeconds'] as int;
+      final remainingMinutes = (remainingSeconds / 60).toStringAsFixed(1);
+
+      if (mounted && remainingSeconds < 180) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Random call time remaining: $remainingMinutes minutes'),
+            backgroundColor:
+                remainingSeconds < 60 ? Colors.orange : Colors.blue,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // Show user selection dialog
+      await _showUserSelectionDialog();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // Show dialog to select a user for voice call
+  Future<void> _showUserSelectionDialog() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    // Fetch all users except current user
+    final usersSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where(FieldPath.documentId, isNotEqualTo: currentUser.uid)
+        .limit(50)
+        .get();
+
+    if (usersSnapshot.docs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No users available for calling')),
+        );
+      }
+      return;
+    }
+
+    final users = usersSnapshot.docs
+        .map((doc) => models.UserModel.fromFirestore(doc))
+        .toList();
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxHeight: 500),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select User to Call',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
+                        child: user.photoUrl == null
+                            ? Text(
+                                user.displayName.isNotEmpty
+                                    ? user.displayName[0].toUpperCase()
+                                    : 'U',
+                              )
+                            : null,
+                      ),
+                      title: Text(
+                        user.displayName.isNotEmpty
+                            ? user.displayName
+                            : 'Unknown User',
+                      ),
+                      subtitle: Text(user.email),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _initiateCallWithUser(user);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Initiate call with selected user
+  Future<void> _initiateCallWithUser(models.UserModel otherUser) async {
+    try {
+      if (_currentUser == null) return;
+
+      // Request microphone permission first
+      final micPermission = await Permission.microphone.request();
+      if (!micPermission.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Microphone permission is required for voice calls'),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Create call
+      final call = await _callSignalingService.createCall(
+        receiverId: otherUser.uid,
+        receiverName: otherUser.displayName,
+        receiverPhotoUrl: otherUser.photoUrl ?? '',
+        callerName: _currentUser!.displayName,
+        callerPhotoUrl: _currentUser!.photoUrl ?? '',
+      );
+
+      print(
+          '📤 HOME: Call created, joining Agora channel: ${call.agoraChannelId}');
+
+      // Join Agora channel (initialize is handled internally)
+      await _agoraService.joinChannel(call.agoraChannelId);
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Navigate to voice call screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => VoiceCallScreen(
+            call: call,
+            isOutgoing: true,
+            isRandomCall: true, // NEW: Mark this as a random call
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error initiating call: $e');
+      // Leave the channel if we joined it before the error
+      await _agoraService.leaveChannel().catchError((err) {
+        print('Error leaving channel after failed initiation: $err');
+      });
+      Navigator.of(context).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initiate call: $e')),
         );
       }
     }
@@ -617,6 +977,104 @@ setState(() {
             //   ),
             // ),
             const SizedBox(height: 16),
+
+            Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // Random Call Card
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.phone_in_talk,
+                                    color: Color(0xFF4A90A4), size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Random Call',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Get instantly connected with another English learner for a real-time voice conversation. '
+                              'Calls are randomly matched to help you practice speaking naturally and confidently.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                      
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _startRandomCall,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4A90A4),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.phone, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Connect with Co-learners',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                    ],
+                  ),
+                ),
 
             // Other Section
             Container(
