@@ -1614,8 +1614,6 @@
 //   );
 // }
 
-
-
 // String _formatTimeAgo(dynamic createdAt) {
 //   // createdAt can be Timestamp or DateTime depending on your model
 //   DateTime dt;
@@ -1638,10 +1636,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:english_circle/models/status_model.dart';
-import 'package:english_circle/screens/ai_agent_page.dart';
-import 'package:english_circle/screens/premium_screen.dart';
-import 'package:english_circle/services/status_service.dart';
+import 'package:global_gate/models/status_model.dart';
+import 'package:global_gate/screens/ai_agent_page.dart';
+import 'package:global_gate/screens/premium_screen.dart';
+import 'package:global_gate/services/status_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -1762,7 +1760,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No partners available right now. Try again later!'),
+              content:
+                  Text('No partners available right now. Try again later!'),
               duration: Duration(seconds: 2),
             ),
           );
@@ -1958,8 +1957,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted && remainingSeconds < 180) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Random call time remaining: $remainingMinutes minutes'),
-            backgroundColor: remainingSeconds < 60 ? Colors.orange : Colors.blue,
+            content:
+                Text('Random call time remaining: $remainingMinutes minutes'),
+            backgroundColor:
+                remainingSeconds < 60 ? Colors.orange : Colors.blue,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -2033,8 +2034,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     final user = users[index];
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundImage:
-                            user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
                         child: user.photoUrl == null
                             ? Text(
                                 user.displayName.isNotEmpty
@@ -2044,7 +2046,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             : null,
                       ),
                       title: Text(
-                        user.displayName.isNotEmpty ? user.displayName : 'Unknown User',
+                        user.displayName.isNotEmpty
+                            ? user.displayName
+                            : 'Unknown User',
                       ),
                       subtitle: Text(user.email),
                       onTap: () async {
@@ -2075,7 +2079,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Microphone permission is required for voice calls'),
+              content:
+                  Text('Microphone permission is required for voice calls'),
             ),
           );
         }
@@ -2182,7 +2187,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (!snapshot.hasData) {
                               return const Text(
                                 '...',
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
                               );
                             }
                             return Text(
@@ -2204,7 +2210,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const Divider(height: 1),
-
         Expanded(
           child: SingleChildScrollView(
             child: Column(
@@ -2406,13 +2411,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     setState(() => _currentIndex = 1);
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Text(
-                      canOpenStatusTab ? "What's on your mind?" : "Upgrade to post a status",
+                      canOpenStatusTab
+                          ? "What's on your mind?"
+                          : "Upgrade to post a status",
                       style: TextStyle(color: Colors.grey.shade700),
                     ),
                   ),
@@ -2458,7 +2466,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final hasImage = status.type == 'image' && image.isNotEmpty;
 
     void openViewer() {
-      final userStatuses = allStatuses.where((s) => s.ownerId == status.ownerId).toList();
+      final userStatuses =
+          allStatuses.where((s) => s.ownerId == status.ownerId).toList();
 
       // viewer uses same StatusDetailScreen (no change)
       userStatuses.sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -2528,16 +2537,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 2),
                       Text(
                         _formatTimeAgo(status.createdAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
                       ),
                     ],
                   ),
                 ),
-              
               ],
             ),
           ),
-
           if (caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2546,9 +2554,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(fontSize: 14, height: 1.4),
               ),
             ),
-
           if (caption.isNotEmpty && hasImage) const SizedBox(height: 10),
-
           if (hasImage)
             GestureDetector(
               onTap: openViewer,
@@ -2568,7 +2574,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
@@ -2626,7 +2631,8 @@ class _HomeScreenState extends State<HomeScreen> {
             color: completed ? Colors.orange : Colors.grey.shade200,
           ),
           child: completed
-              ? const Icon(Icons.local_fire_department, color: Colors.white, size: 20)
+              ? const Icon(Icons.local_fire_department,
+                  color: Colors.white, size: 20)
               : null,
         ),
         const SizedBox(height: 4),
@@ -2653,16 +2659,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final screens = [
       _buildHomeTab(),
-      _currentUser != null && _hasPackage(_currentUser!) && _hasCommunity(_currentUser!)
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasCommunity(_currentUser!)
           ? const StatusScreen()
           : const PremiumScreen(),
       _currentUser != null
           ? ProfileScreen(userId: _currentUser!.uid)
           : const Center(child: CircularProgressIndicator()),
-      _currentUser != null && _hasPackage(_currentUser!) && _hasAI(_currentUser!)
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasAI(_currentUser!)
           ? const AIAgentPage()
           : const PremiumScreen(),
-      _currentUser != null && _hasPackage(_currentUser!) && _hasCommunity(_currentUser!)
+      _currentUser != null &&
+              _hasPackage(_currentUser!) &&
+              _hasCommunity(_currentUser!)
           ? const ChatsListScreen()
           : const PremiumScreen(),
     ];
@@ -2682,10 +2694,13 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 8,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.photo_library), label: 'Status'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.photo_library), label: 'Status'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          BottomNavigationBarItem(icon: Icon(Icons.workspace_premium), label: 'AIagent'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.workspace_premium), label: 'AIagent'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
         ],
       ),
     );
@@ -2726,7 +2741,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 16),
                       IconButton(
-                        icon: const Icon(Icons.dark_mode_outlined, color: Colors.white),
+                        icon: const Icon(Icons.dark_mode_outlined,
+                            color: Colors.white),
                         onPressed: () {},
                       ),
                     ],
@@ -2783,7 +2799,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 }),
                 const Divider(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
                     'V 5.5.0',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),

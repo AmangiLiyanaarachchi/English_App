@@ -142,14 +142,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo/Title
-                  const Icon(
-                    Icons.language,
-                    size: 80,
-                    color: Colors.white,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'EnglishCircle',
+                    'Global Gate',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,

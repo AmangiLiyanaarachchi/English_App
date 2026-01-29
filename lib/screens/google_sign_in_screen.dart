@@ -147,11 +147,7 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen>
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2A9D8F), Color(0xFF264653)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
@@ -161,16 +157,18 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen>
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.language,
-                    size: 60,
-                    color: Colors.white,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 const Text(
-                  'EnglishCircle',
+                  'Global Gate',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -181,7 +179,7 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen>
                 const SizedBox(height: 8),
 
                 Text(
-                  'Practice English with your\ninstitute community',
+                  'Inspiring Future Minds',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -215,7 +213,7 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen>
 
                 // Privacy notice
                 Text(
-                  'Google will share your name, email, and\nprofile picture with EnglishCircle',
+                  'Google will share your name, email, and\nprofile picture with Global Gate',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,

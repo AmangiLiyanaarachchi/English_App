@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'EnglishCircle',
+      title: 'Global Gate',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -117,28 +117,38 @@ class AuthWrapper extends StatelessWidget {
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF2A9D8F),
+          return Scaffold(
+            backgroundColor: const Color(0xFF2A9D8F),
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.language,
-                    size: 100,
-                    color: Colors.white,
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 24),
-                  Text(
-                    'EnglishCircle',
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Global Gate',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(height: 16),
-                  CircularProgressIndicator(color: Colors.white),
+                  const SizedBox(height: 16),
+                  const CircularProgressIndicator(color: Colors.white),
                 ],
               ),
             ),

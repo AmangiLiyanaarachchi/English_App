@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:english_circle/screens/home_screen.dart';
+import 'package:global_gate/screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -388,80 +388,80 @@ class _AIAgentPageState extends State<AIAgentPage> with WidgetsBindingObserver {
       },
       child: Scaffold(
         appBar: AppBar(
-  title: const Text(
-    "English AI Coach",
-    style: TextStyle(fontWeight: FontWeight.bold),
-  ),
-  actions: [
-    if (hasAIAccess)
-      Row(
-        children: [
-          // ⏱ Timer UI
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: remainingSeconds < 300
-                  ? Colors.red.shade700
-                  : const Color(0xFF4A90A4),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.timer,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _formatTime(remainingSeconds),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+          title: const Text(
+            "English AI Coach",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            if (hasAIAccess)
+              Row(
+                children: [
+                  // ⏱ Timer UI
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: remainingSeconds < 300
+                          ? Colors.red.shade700
+                          : const Color(0xFF4A90A4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.timer,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(remainingSeconds),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
 
-          // 🛑 END Button (UI only)
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ElevatedButton(
-              onPressed: () {
-                    Navigator.pop(context, false);
+                  // 🛑 END Button (UI only)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context, false);
 
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  }, // UI ONLY
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                disabledBackgroundColor: Colors.red,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 0,
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const HomeScreen()),
+                          (route) => false,
+                        );
+                      }, // UI ONLY
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        disabledBackgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "END",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: const Text(
-                "END",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-  ],
-),
-
+          ],
+        ),
         body: Column(
           children: [
             // Progress bar

@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:english_circle/screens/premium_screen.dart';
-import 'package:english_circle/screens/voice_call_screen.dart';
-import 'package:english_circle/services/status_service.dart';
+import 'package:global_gate/screens/premium_screen.dart';
+import 'package:global_gate/screens/voice_call_screen.dart';
+import 'package:global_gate/services/status_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,6 +16,7 @@ import '../services/agora_service.dart';
 import '../services/call_signaling_service.dart';
 import '../services/firebase_service.dart';
 import '../services/random_call_service.dart';
+import '../services/student_verification_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -35,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   final _agoraService = AgoraService();
   final _callSignalingService = CallSignalingService();
   final _randomCallService = RandomCallService(); // NEW
+  final _studentVerificationService = StudentVerificationService();
   int _currentIndex = 0;
   models.UserModel? _currentUser;
   bool _isLoading = false;
@@ -77,7 +79,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     final currentFirebaseUser = FirebaseAuth.instance.currentUser;
     if (currentFirebaseUser != null) {
       try {
-        final currentUserProfile = await _firebaseService.getUserProfile(currentFirebaseUser.uid);
+        final currentUserProfile =
+            await _firebaseService.getUserProfile(currentFirebaseUser.uid);
         if (mounted) {
           setState(() => _currentUser = currentUserProfile);
         }
@@ -120,12 +123,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     try {
       print('📡 [ProfileScreen] Fetching from Firestore...');
       final profile = await _firebaseService.getUserProfile(widget.userId);
-      if (mounted) {
+      if (mounted && profile != null) {
         print('✅ [ProfileScreen] Profile loaded from Firestore');
-        setState(() {
-          _userProfile = profile;
-          _isLoadingProfile = false;
-        });
+
+        // Check if student plan has expired
+        if (profile.studentIdVerified == true &&
+            profile.studentPlanEndDate != null &&
+            DateTime.now().isAfter(profile.studentPlanEndDate!)) {
+          print('⏰ Student plan expired, deactivating...');
+          await _studentVerificationService.deactivateStudentPlan(profile.uid);
+          // Reload profile to get updated data
+          final updatedProfile =
+              await _firebaseService.getUserProfile(widget.userId);
+          setState(() {
+            _userProfile = updatedProfile;
+            _isLoadingProfile = false;
+          });
+        } else {
+          setState(() {
+            _userProfile = profile;
+            _isLoadingProfile = false;
+          });
+        }
       }
     } catch (e) {
       print('⚠️ [ProfileScreen] Error loading from Firestore: $e');
@@ -198,22 +217,20 @@ class _ProfileScreenState extends State<ProfileScreen>
 
               try {
                 await _firebaseService.updateUserProfile(
-  _userProfile!.uid,
-  {'displayName': newName},
-);
+                  _userProfile!.uid,
+                  {'displayName': newName},
+                );
 
 // 🔥 ADD THIS
-await StatusService().updateUserInfoInStatuses(
-  userId: _userProfile!.uid,
-  newName: newName,
-  newPhoto: _userProfile!.photoUrl ?? '',
-);
+                await StatusService().updateUserInfoInStatuses(
+                  userId: _userProfile!.uid,
+                  newName: newName,
+                  newPhoto: _userProfile!.photoUrl ?? '',
+                );
 
-setState(() {
-  _userProfile = _userProfile!.copyWith(displayName: newName);
-});
-
-                
+                setState(() {
+                  _userProfile = _userProfile!.copyWith(displayName: newName);
+                });
 
                 if (mounted) {
                   setState(() {
@@ -604,6 +621,244 @@ setState(() {
     }
   }
 
+  // Student ID Verification Dialog
+  Future<void> _showStudentIdDialog() async {
+    final controller = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Verify Student ID',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your student ID to activate Community Plan',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: 'e.g., STU001',
+                labelText: 'Student ID',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.school),
+              ),
+              textCapitalization: TextCapitalization.characters,
+              maxLength: 20,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 20, color: Colors.blue.shade700),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Contact your institute if you don\'t have a student ID',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A90A4),
+            ),
+            onPressed: () async {
+              final studentId = controller.text.trim().toUpperCase();
+              if (studentId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter a student ID')),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+              await _verifyAndActivateStudentPlan(studentId);
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Verify student ID and activate Community Plan
+  Future<void> _verifyAndActivateStudentPlan(String studentId) async {
+    print('🚀 Starting student verification for: $studentId');
+
+    // Show loading
+    if (!mounted) {
+      print('❌ Widget not mounted, cannot show dialog');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      print('🔍 Verifying student ID: $studentId');
+      final result =
+          await _studentVerificationService.verifyStudentId(studentId);
+      print('📊 Verification result: $result');
+
+      if (!mounted) {
+        print('❌ Widget unmounted during verification');
+        return;
+      }
+
+      Navigator.of(context).pop(); // Close loading
+      print('✅ Loading dialog closed');
+
+      if (result['isValid']) {
+        print('✅ Student ID is valid, activating Community Plan...');
+        // Activate Community Plan
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          print('👤 User ID: ${user.uid}');
+          await _studentVerificationService.activateCommunityPlanForStudent(
+            user.uid,
+            result['studentId'],
+            result['startDate'],
+            result['endDate'],
+          );
+          print('✅ Community Plan activated successfully');
+
+          // Reload profile
+          print('🔄 Reloading profile...');
+          await _loadProfile();
+          print('✅ Profile reloaded');
+
+          if (mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(Icons.check_circle,
+                        color: Colors.green.shade600, size: 28),
+                    const SizedBox(width: 8),
+                    const Text('Success!'),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Your student ID has been verified!',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Student ID: ${result['studentId']}'),
+                    const SizedBox(height: 8),
+                    Text('Valid until: ${_formatDate(result['endDate'])}'),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.celebration, color: Colors.green),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Community Plan has been activated!',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A90A4),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Great!'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+      } else {
+        // Show error
+        print('❌ Verification failed: ${result['message']}');
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.error_outline,
+                      color: Colors.red.shade600, size: 28),
+                  const SizedBox(width: 8),
+                  const Text('Verification Failed'),
+                ],
+              ),
+              content: Text(result['message']),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error during verification: $e');
+      Navigator.of(context).pop(); // Close loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_userProfile == null) {
@@ -806,6 +1061,42 @@ setState(() {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        // Display current package if exists
+                        if (_userProfile!.package != null &&
+                            _userProfile!.package!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF4A90A4), Color(0xFF2A9D8F)],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.workspace_premium,
+                                    color: Colors.white, size: 18),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _userProfile!.package!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (_userProfile!.studentIdVerified ==
+                                    true) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.school,
+                                      color: Colors.white, size: 16),
+                                ],
+                              ],
+                            ),
+                          ),
                         // const SizedBox(height: 8),
                         // Row(
                         //   mainAxisAlignment: MainAxisAlignment.center,
@@ -1007,102 +1298,98 @@ setState(() {
             const SizedBox(height: 16),
 
             Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      // Random Call Card
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Random Call Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
                           children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.phone_in_talk,
-                                    color: Color(0xFF4A90A4), size: 24),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Random Call',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Get instantly connected with another English learner for a real-time voice conversation. '
-                              'Calls are randomly matched to help you practice speaking naturally and confidently.',
+                            Icon(Icons.phone_in_talk,
+                                color: Color(0xFF4A90A4), size: 24),
+                            SizedBox(width: 8),
+                            Text(
+                              'Random Call',
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey,
-                                height: 1.4,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                      
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _startRandomCall,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4A90A4),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: _isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.phone, size: 20),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Connect with Co-learners',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                    ],
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Get instantly connected with another English learner for a real-time voice conversation. '
+                          'Calls are randomly matched to help you practice speaking naturally and confidently.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _startRandomCall,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4A90A4),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.phone, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Connect with Co-learners',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
 
             // Other Section
             Container(
@@ -1119,6 +1406,15 @@ setState(() {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  // Student ID Verification - Show only if not already a student
+                  if (_userProfile?.studentIdVerified != true)
+                    _buildMenuItem(
+                      Icons.school,
+                      'Student Verification',
+                      'Verify your student ID to get Community Plan',
+                      Icons.verified_user,
+                      const Color(0xFF2196F3),
+                    ),
                   // Only show "Join Premium Today" if premium should NOT be shown at bottom
                   if (!_shouldShowPremiumInProfile())
                     _buildMenuItem(
@@ -1224,6 +1520,8 @@ setState(() {
       onTap: () {
         if (title == 'Sign Out') {
           _signOut();
+        } else if (title == 'Student Verification') {
+          _showStudentIdDialog();
         } else if (title == 'Contact us') {
           // Contact us
         } else if (title == 'Share') {
@@ -1455,21 +1753,20 @@ setState(() {
       );
 
       await _firebaseService.updateUserProfile(
-  _userProfile!.uid,
-  {'photoUrl': imageUrl},
-);
+        _userProfile!.uid,
+        {'photoUrl': imageUrl},
+      );
 
 // 🔥 ADD THIS
-await StatusService().updateUserInfoInStatuses(
-  userId: _userProfile!.uid,
-  newName: _userProfile!.displayName,
-  newPhoto: imageUrl,
-);
+      await StatusService().updateUserInfoInStatuses(
+        userId: _userProfile!.uid,
+        newName: _userProfile!.displayName,
+        newPhoto: imageUrl,
+      );
 
-setState(() {
-  _userProfile = _userProfile!.copyWith(photoUrl: imageUrl);
-});
-
+      setState(() {
+        _userProfile = _userProfile!.copyWith(photoUrl: imageUrl);
+      });
 
       if (mounted) {
         setState(() {

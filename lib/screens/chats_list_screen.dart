@@ -497,7 +497,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         title: const Align(
           alignment: Alignment.center, // same as Alignment.start
           child: Text(
-            'EnglishCircle',
+            'Global Gate',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 20,

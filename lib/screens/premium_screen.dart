@@ -82,6 +82,18 @@ class _PremiumScreenState extends State<PremiumScreen> {
               }
             }
           }
+
+          // Check if user is a verified student with active Community Plan
+          final isStudentVerified = data?['studentIdVerified'] ?? false;
+          final studentPlanEndDate = data?['studentPlanEndDate'];
+
+          if (isStudentVerified && studentPlanEndDate != null) {
+            DateTime expiry = (studentPlanEndDate as Timestamp).toDate();
+            if (expiry.isAfter(DateTime.now())) {
+              hasCommunity = true;
+              communityExpiry = expiry;
+            }
+          }
         }
       }
     } catch (e) {

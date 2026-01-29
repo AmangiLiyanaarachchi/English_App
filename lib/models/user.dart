@@ -22,6 +22,12 @@ class UserModel {
   // 🔥 ADD THIS
   final String? package;
 
+  // Student verification fields
+  final String? studentId;
+  final bool? studentIdVerified;
+  final DateTime? studentPlanStartDate;
+  final DateTime? studentPlanEndDate;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -41,6 +47,12 @@ class UserModel {
 
     // 🔥 ADD THIS
     this.package,
+
+    // Student verification fields
+    this.studentId,
+    this.studentIdVerified,
+    this.studentPlanStartDate,
+    this.studentPlanEndDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -63,6 +75,16 @@ class UserModel {
 
       // 🔥 ADD THIS
       'package': package,
+
+      // Student verification fields
+      'studentId': studentId,
+      'studentIdVerified': studentIdVerified,
+      'studentPlanStartDate': studentPlanStartDate != null
+          ? Timestamp.fromDate(studentPlanStartDate!)
+          : null,
+      'studentPlanEndDate': studentPlanEndDate != null
+          ? Timestamp.fromDate(studentPlanEndDate!)
+          : null,
     };
   }
 
@@ -90,6 +112,13 @@ class UserModel {
 
       // 🔥 READ FROM FIRESTORE
       package: json['package'],
+
+      // Student verification fields
+      studentId: json['studentId'],
+      studentIdVerified: json['studentIdVerified'],
+      studentPlanStartDate:
+          (json['studentPlanStartDate'] as Timestamp?)?.toDate(),
+      studentPlanEndDate: (json['studentPlanEndDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -120,6 +149,12 @@ class UserModel {
 
     // 🔥 ADD THIS
     String? package,
+
+    // Student verification fields
+    String? studentId,
+    bool? studentIdVerified,
+    DateTime? studentPlanStartDate,
+    DateTime? studentPlanEndDate,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -140,6 +175,12 @@ class UserModel {
 
       // 🔥 COPY
       package: package ?? this.package,
+
+      // Student verification fields
+      studentId: studentId ?? this.studentId,
+      studentIdVerified: studentIdVerified ?? this.studentIdVerified,
+      studentPlanStartDate: studentPlanStartDate ?? this.studentPlanStartDate,
+      studentPlanEndDate: studentPlanEndDate ?? this.studentPlanEndDate,
     );
   }
 }

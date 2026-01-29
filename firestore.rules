@@ -16,7 +16,20 @@ service cloud.firestore {
       allow update: if request.auth != null && 
                        request.auth.uid == userId &&
                        (request.resource.data.keys().hasAny(['randomCallTotalSeconds', 'randomCallEnabled']) ||
-                        request.resource.data.keys().hasAny(['aiTotalSeconds', 'aiUsedSeconds', 'aiEnabled', 'planType']));
+                        request.resource.data.keys().hasAny(['aiTotalSeconds', 'aiUsedSeconds', 'aiEnabled', 'planType']) ||
+                        request.resource.data.keys().hasAny(['studentId', 'studentIdVerified', 'studentPlanStartDate', 'studentPlanEndDate']));
+    }
+    
+    // ================================
+    // STUDENTS COLLECTION (Student ID Verification)
+    // ================================
+    match /students/{studentId} {
+      // Any authenticated user can read student records (for verification)
+      allow read: if request.auth != null;
+      
+      // Only admins can write (via Firebase Console or Admin SDK)
+      // Set this to false so students cannot modify the database
+      allow write: if false;
     }
     
     // ================================

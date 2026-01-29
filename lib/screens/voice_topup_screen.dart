@@ -55,6 +55,21 @@ class _VoiceTopupScreenState extends State<VoiceTopupScreen> {
               }
             }
           }
+
+          // Check if user is a verified student with active Community Plan
+          final isStudentVerified = data?['studentIdVerified'] ?? false;
+          final studentPlanEndDate = data?['studentPlanEndDate'];
+
+          if (isStudentVerified && studentPlanEndDate != null) {
+            DateTime expiry = (studentPlanEndDate as Timestamp).toDate();
+            if (expiry.isAfter(DateTime.now())) {
+              setState(() {
+                hasCommunityPlan = true;
+                currentVoiceMinutes = data?['voiceTotalMinutes'] ?? 0;
+                usedVoiceMinutes = data?['voiceUsedMinutes'] ?? 0;
+              });
+            }
+          }
         }
       }
     } catch (e) {

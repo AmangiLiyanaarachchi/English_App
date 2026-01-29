@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_picker/country_picker.dart';
-import 'package:english_circle/screens/home_screen.dart';
+import 'package:global_gate/screens/home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -604,7 +604,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         // Calculate voice minutes based on duration
         int voiceTotalMinutes = 0;
         if (widget.selectedDuration == "1 Month") {
-          voiceTotalMinutes = 20; // 20 minutes for 1 month
+          voiceTotalMinutes = 255; // 255 minutes for 1 month
         } else if (widget.selectedDuration == "6 Months") {
           voiceTotalMinutes = 540; // 540 minutes for 6 months
         }
@@ -939,13 +939,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
         actions: [
           TextButton(
             onPressed: () {
-                    Navigator.pop(context, false);
+              Navigator.pop(context, false);
 
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      (route) => false,
-                    );
-                  },
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+                (route) => false,
+              );
+            },
             child: const Text("OK"),
           ),
         ],

@@ -14,7 +14,7 @@
                      android:maxSdkVersion="32"/>
     
     <application
-        android:label="EnglishCircle"
+        android:label="Global Gate"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
