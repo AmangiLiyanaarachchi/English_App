@@ -73,6 +73,19 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadProfile() async {
     print('📱 [ProfileScreen] _loadProfile started');
 
+    // Load current user's profile for random calls
+    final currentFirebaseUser = FirebaseAuth.instance.currentUser;
+    if (currentFirebaseUser != null) {
+      try {
+        final currentUserProfile = await _firebaseService.getUserProfile(currentFirebaseUser.uid);
+        if (mounted) {
+          setState(() => _currentUser = currentUserProfile);
+        }
+      } catch (e) {
+        print('⚠️ [ProfileScreen] Error loading current user profile: $e');
+      }
+    }
+
     if (widget.userId.isEmpty) {
       print('❌ [ProfileScreen] Cannot load profile: userId is empty');
       // Even with empty userId, create a basic profile from current user
@@ -98,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             isOnline: true,
             lastActive: DateTime.now(),
           );
+          _isLoadingProfile = false;
         });
       }
       return;
@@ -108,7 +122,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       final profile = await _firebaseService.getUserProfile(widget.userId);
       if (mounted) {
         print('✅ [ProfileScreen] Profile loaded from Firestore');
-        setState(() => _userProfile = profile);
+        setState(() {
+          _userProfile = profile;
+          _isLoadingProfile = false;
+        });
       }
     } catch (e) {
       print('⚠️ [ProfileScreen] Error loading from Firestore: $e');
@@ -137,9 +154,13 @@ class _ProfileScreenState extends State<ProfileScreen>
             isOnline: true,
             lastActive: DateTime.now(),
           );
+          _isLoadingProfile = false;
         });
       } else {
         print('❌ [ProfileScreen] No Firebase Auth user found');
+        if (mounted) {
+          setState(() => _isLoadingProfile = false);
+        }
       }
     }
   }
@@ -445,9 +466,12 @@ setState(() {
 
     if (!mounted) return;
 
+    // Save the parent context before showing dialog
+    final parentContext = context;
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -490,8 +514,12 @@ setState(() {
                             : 'Unknown User',
                       ),
                       subtitle: Text(user.email),
-                      onTap: () {
-                        Navigator.of(context).pop();
+                      onTap: () async {
+                        // Close dialog first
+                        Navigator.of(dialogContext).pop();
+                        // Wait a bit for dialog to close
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        // Then initiate call with parent context
                         _initiateCallWithUser(user);
                       },
                     );

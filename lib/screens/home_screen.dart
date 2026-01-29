@@ -2002,9 +2002,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
 
+    // Save the parent context before showing dialog
+    final parentContext = context;
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -2044,8 +2047,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         user.displayName.isNotEmpty ? user.displayName : 'Unknown User',
                       ),
                       subtitle: Text(user.email),
-                      onTap: () {
-                        Navigator.of(context).pop();
+                      onTap: () async {
+                        // Close dialog first
+                        Navigator.of(dialogContext).pop();
+                        // Wait a bit for dialog to close
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        // Then initiate call with parent context
                         _initiateCallWithUser(user);
                       },
                     );
