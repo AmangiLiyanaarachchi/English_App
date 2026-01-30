@@ -19,8 +19,6 @@ class _PremiumScreenState extends State<PremiumScreen> {
 
   final Color mainColor = const Color(0xFF4A90A4);
 
-  final TextEditingController studentIdController = TextEditingController();
-  bool isSubmitting = false;
 
   // Active subscription info
   String? activePackage;
@@ -250,37 +248,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
     });
   }
 
-  // 🔥 FIREBASE SAVE FUNCTION (update users collection)
-  Future<void> submitStudentID() async {
-    String studentID = studentIdController.text.trim();
-    if (studentID.isEmpty) return;
-
-    setState(() => isSubmitting = true);
-
-    try {
-      // Get current user UID
-      String currentUserId = FirebaseAuth.instance.currentUser!.uid;
-
-      // Update instituteCode in users collection
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(currentUserId)
-          .update({"instituteCode": studentID});
-
-      setState(() => isSubmitting = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Student ID submitted successfully!")),
-      );
-
-      studentIdController.clear();
-    } catch (e) {
-      setState(() => isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
-    }
-  }
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -587,66 +555,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
               ),
 
               // 🔥 SHOW STUDENT ID FIELD ONLY FOR COMMUNITY PLAN
-              if (planName == "Community Plan")
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Student ID",
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Student ID input
-                    TextField(
-                      controller: studentIdController,
-                      onChanged: (value) {
-                        setState(() {}); // refresh UI when user types
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Enter your student ID",
-                        filled: true,
-                        fillColor: const Color(0xFFF0F4F8),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Submit button visible only if text exists
-                    if (studentIdController.text.trim().isNotEmpty)
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: isSubmitting ? null : submitStudentID,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: mainColor,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
-                          ),
-                          child: isSubmitting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  "Submit Student ID",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                        ),
-                      ),
-                  ],
-                ),
+             
             ],
           ],
         ),

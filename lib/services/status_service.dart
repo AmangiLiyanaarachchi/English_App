@@ -17,7 +17,7 @@ class StatusService {
     if (currentUser == null) throw Exception('User not logged in');
 
     final now = DateTime.now();
-    final expiresAt = now.add(const Duration(hours: 24));
+    final expiresAt = now.add(const Duration(hours: 168));
 
     final status = StatusModel(
       statusId: '',
@@ -46,7 +46,7 @@ class StatusService {
     final imageUrl = await storageRef.getDownloadURL();
 
     final now = DateTime.now();
-    final expiresAt = now.add(const Duration(hours: 24));
+    final expiresAt = now.add(const Duration(hours: 168));
 
     final status = StatusModel(
       statusId: '',
