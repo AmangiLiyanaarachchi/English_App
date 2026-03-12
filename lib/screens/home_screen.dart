@@ -1636,13 +1636,13 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:global_gate/models/status_model.dart';
+import 'package:global_gate/screens/activity.dart';
 import 'package:global_gate/screens/ai_agent_page.dart';
 import 'package:global_gate/screens/premium_screen.dart';
 import 'package:global_gate/services/status_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../models/user.dart' as models;
@@ -1651,7 +1651,6 @@ import '../services/call_signaling_service.dart';
 import '../services/firebase_service.dart';
 import '../services/random_call_service.dart';
 import 'audio_chat_screen.dart';
-import 'chats_list_screen.dart';
 import 'incoming_call_screen.dart';
 import 'profile_screen.dart';
 import 'status_screen.dart';
@@ -2457,162 +2456,157 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ✅ MUST be inside class (uses helper + navigation)
   Widget _buildFeedPostCard({
-  required BuildContext context,
-  required StatusModel status,
-  required List<StatusModel> allStatuses,
-}) {
-  final caption = (status.text ?? '').trim();
-  final image = (status.imageUrl ?? '').trim();
-  final hasImage = status.type == 'image' && image.isNotEmpty;
+    required BuildContext context,
+    required StatusModel status,
+    required List<StatusModel> allStatuses,
+  }) {
+    final caption = (status.text ?? '').trim();
+    final image = (status.imageUrl ?? '').trim();
+    final hasImage = status.type == 'image' && image.isNotEmpty;
 
-  final myUid = FirebaseAuth.instance.currentUser?.uid;
-  final isMyPost = myUid != null && status.ownerId == myUid;
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    final isMyPost = myUid != null && status.ownerId == myUid;
 
-  void openViewer({required bool deleteMode}) {
-    final userStatuses =
-        allStatuses.where((s) => s.ownerId == status.ownerId).toList();
+    void openViewer({required bool deleteMode}) {
+      final userStatuses =
+          allStatuses.where((s) => s.ownerId == status.ownerId).toList();
 
-    userStatuses.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      userStatuses.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    final idx = userStatuses.indexWhere((s) => s.statusId == status.statusId);
-    final initialIndex = idx >= 0 ? idx : 0;
+      final idx = userStatuses.indexWhere((s) => s.statusId == status.statusId);
+      final initialIndex = idx >= 0 ? idx : 0;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StatusDetailScreen(
-          statuses: userStatuses,
-          initialIndex: initialIndex,
-          otherUserId: status.ownerId,
-          deleteMode: deleteMode,
-        ),
-      ),
-    );
-  }
-
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: status.ownerPhoto.isNotEmpty
-                    ? NetworkImage(status.ownerPhoto)
-                    : null,
-                backgroundColor: const Color(0xFF4A90A4),
-                child: status.ownerPhoto.isEmpty
-                    ? Text(
-                        status.ownerName.isNotEmpty
-                            ? status.ownerName[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(color: Colors.white),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      status.ownerName.isNotEmpty ? status.ownerName : 'User',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatTimeAgo(status.createdAt),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ✅ DELETE ICON ONLY FOR MY POST
-              if (isMyPost)
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => openViewer(deleteMode: true),
-                ),
-            ],
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StatusDetailScreen(
+            statuses: userStatuses,
+            initialIndex: initialIndex,
+            otherUserId: status.ownerId,
+            deleteMode: deleteMode,
           ),
         ),
+      );
+    }
 
-        if (caption.isNotEmpty)
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              caption,
-              style: const TextStyle(fontSize: 14, height: 1.4),
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundImage: status.ownerPhoto.isNotEmpty
+                      ? NetworkImage(status.ownerPhoto)
+                      : null,
+                  backgroundColor: const Color(0xFF4A90A4),
+                  child: status.ownerPhoto.isEmpty
+                      ? Text(
+                          status.ownerName.isNotEmpty
+                              ? status.ownerName[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(color: Colors.white),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        status.ownerName.isNotEmpty ? status.ownerName : 'User',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTimeAgo(status.createdAt),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ✅ DELETE ICON ONLY FOR MY POST
+                if (isMyPost)
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => openViewer(deleteMode: true),
+                  ),
+              ],
             ),
           ),
-
-        if (caption.isNotEmpty && hasImage) const SizedBox(height: 10),
-
-        if (hasImage)
-          GestureDetector(
-            onTap: () => openViewer(deleteMode: false),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(0),
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: Image.network(
-                  image,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image),
+          if (caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                caption,
+                style: const TextStyle(fontSize: 14, height: 1.4),
+              ),
+            ),
+          if (caption.isNotEmpty && hasImage) const SizedBox(height: 10),
+          if (hasImage)
+            GestureDetector(
+              onTap: () => openViewer(deleteMode: false),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(0),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: Image.network(
+                    image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey.shade200,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.broken_image),
+                    ),
                   ),
                 ),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: () => openViewer(deleteMode: false),
+                  icon: const Icon(Icons.mode_comment_outlined, size: 18),
+                  label: const Text('Comment'),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => openViewer(deleteMode: false),
+                  icon: const Icon(Icons.open_in_full, size: 18),
+                ),
+              ],
+            ),
           ),
-
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              TextButton.icon(
-                onPressed: () => openViewer(deleteMode: false),
-                icon: const Icon(Icons.mode_comment_outlined, size: 18),
-                label: const Text('Comment'),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => openViewer(deleteMode: false),
-                icon: const Icon(Icons.open_in_full, size: 18),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-      ],
-    ),
-  );
-}
-
+          const SizedBox(height: 6),
+        ],
+      ),
+    );
+  }
 
   // ✅ helper inside class
   String _formatTimeAgo(dynamic createdAt) {
@@ -2687,7 +2681,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _currentUser != null &&
               _hasPackage(_currentUser!) &&
               _hasCommunity(_currentUser!)
-          ? const ChatsListScreen()
+          //? const ChatsListScreen()
+          ? const EnglishActivitiesScreen()
           : const PremiumScreen(),
     ];
 
@@ -2712,7 +2707,9 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
               icon: Icon(Icons.workspace_premium), label: 'AIagent'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+              icon: Icon(Icons.local_activity_outlined), label: 'Activity'),
+          // BottomNavigationBarItem(
+          //     icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
         ],
       ),
     );
