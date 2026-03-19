@@ -11,12 +11,14 @@ class PaymentScreen extends StatefulWidget {
   final String selectedPlan;
   final String selectedDuration;
   final double price;
+  final bool autoLaunchIfProfileComplete;
 
   const PaymentScreen({
     super.key,
     required this.selectedPlan,
     required this.selectedDuration,
     required this.price,
+    this.autoLaunchIfProfileComplete = false,
   });
 
   @override
@@ -24,9 +26,6 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  final TextEditingController cardNumberController = TextEditingController();
-  final TextEditingController expiryController = TextEditingController();
-  final TextEditingController cvvController = TextEditingController();
   final TextEditingController contactNumberController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
@@ -35,6 +34,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String selectedCountryCode = "+94";
   String selectedFlag = "🇱🇰";
   bool isProcessing = false;
+  bool _autoLaunchAttempted = false;
 
   final Color paleBlue = const Color(0xFFE9F1F4);
   final Color blueColor = const Color(0xFF4A90A4);
@@ -43,16 +43,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
     "firstName": null,
     "lastName": null,
     "email": null,
-    "cardNumber": null,
-    "expiry": null,
-    "cvv": null,
     "phone": null,
   };
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _bootstrapPaymentFlow();
+  }
+
+  Future<void> _bootstrapPaymentFlow() async {
+    await _loadUserData();
+    if (!mounted) return;
+
+    if (!widget.autoLaunchIfProfileComplete || _autoLaunchAttempted) {
+      return;
+    }
+
+    final hasRequiredProfile = firstNameController.text.trim().isNotEmpty &&
+        lastNameController.text.trim().isNotEmpty &&
+        emailController.text.trim().isNotEmpty &&
+        contactNumberController.text.trim().isNotEmpty;
+
+    _autoLaunchAttempted = true;
+
+    if (hasRequiredProfile) {
+      processPayment();
+    }
   }
 
   // Load user data from Firebase
@@ -66,6 +83,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (userDoc.exists) {
         final data = userDoc.data();
+        if (!mounted) return;
         setState(() {
           firstNameController.text = data?['firstName'] ?? '';
           lastNameController.text = data?['lastName'] ?? '';
@@ -88,45 +106,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // -----------------------------------------------------
   //                   VALIDATIONS
   // -----------------------------------------------------
-  bool validateCardNumber(String number) {
-    number = number.replaceAll(" ", "");
-    if (number.length != 16) return false;
-
-    int sum = 0;
-    bool alternate = false;
-
-    for (int i = number.length - 1; i >= 0; i--) {
-      int digit = int.parse(number[i]);
-
-      if (alternate) {
-        digit *= 2;
-        if (digit > 9) digit -= 9;
-      }
-
-      sum += digit;
-      alternate = !alternate;
-    }
-
-    return sum % 10 == 0;
-  }
-
-  bool validateExpiry(String expiry) {
-    if (!RegExp(r'^\d\d/\d\d$').hasMatch(expiry)) return false;
-
-    final parts = expiry.split('/');
-    int month = int.parse(parts[0]);
-    int year = 2000 + int.parse(parts[1]);
-
-    if (month < 1 || month > 12) return false;
-
-    final now = DateTime.now();
-    final expiryDate = DateTime(year, month + 1, 0);
-
-    return expiryDate.isAfter(now);
-  }
-
-  bool validateCVV(String cvv) => cvv.length == 3;
-
   bool validatePhone(String phone) => phone.length >= 7;
 
   // -----------------------------------------------------
@@ -257,7 +236,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
             const SizedBox(height: 25),
 
-            // CARD DETAILS WHITE BOX
+            // CUSTOMER DETAILS BOX (card details are entered securely in PayHere)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -300,53 +279,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     inputWidget: styledTextboxWithFocus(
                       controller: emailController,
                       hint: "example@email.com",
-                    ),
-                  ),
-
-                  // Card Number
-                  buildInputField(
-                    label: "Card Number",
-                    keyName: "cardNumber",
-                    inputWidget: styledTextboxWithFocus(
-                      controller: cardNumberController,
-                      hint: "XXXX XXXX XXXX XXXX",
-                      isNumber: true,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(16),
-                        CardNumberInputFormatter(),
-                      ],
-                    ),
-                  ),
-
-                  // Expiry
-                  buildInputField(
-                    label: "Expiry (MM/YY)",
-                    keyName: "expiry",
-                    inputWidget: styledTextboxWithFocus(
-                      controller: expiryController,
-                      hint: "MM/YY",
-                      isNumber: true,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(4),
-                        ExpiryDateFormatter(),
-                      ],
-                    ),
-                  ),
-
-                  // CVV
-                  buildInputField(
-                    label: "CVV",
-                    keyName: "cvv",
-                    inputWidget: styledTextboxWithFocus(
-                      controller: cvvController,
-                      hint: "123",
-                      isNumber: true,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(3),
-                      ],
                     ),
                   ),
 
@@ -400,6 +332,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                   const SizedBox(height: 10),
 
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Card details will be entered securely on PayHere in the next step.",
+                      style: TextStyle(color: Colors.blueGrey.shade700),
+                    ),
+                  ),
+
                   // PAY BUTTON
                   SizedBox(
                     width: double.infinity,
@@ -414,7 +361,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       onPressed: isProcessing ? null : processPayment,
                       child: isProcessing
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("PAY NOW",
+                          : const Text("CONTINUE TO PAYHERE",
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
@@ -491,23 +438,45 @@ class _PaymentScreenState extends State<PaymentScreen> {
     String orderId = "ORDER_${DateTime.now().millisecondsSinceEpoch}";
     String fullPhone = "$selectedCountryCode$phone";
 
-    // 🧪 TEST MODE: Bypassing PayHere due to Merchant ID verification issues
-    // PayHere sandbox requires merchant account activation for mobile SDK
-    // Test mode: Saves to Firestore, unlocks features, fully functional for development
-    const bool testMode =
-        true; // Set to false when using verified live PayHere account
-
-    if (testMode) {
-      // Simulate payment delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Simulate successful payment
-      String testPaymentId = "TEST_${DateTime.now().millisecondsSinceEpoch}";
-      await _handlePaymentSuccess(userId, orderId, testPaymentId);
+    final String? configError = PayHereService.validateConfiguration();
+    if (configError != null) {
+      setState(() {
+        isProcessing = false;
+      });
+      _showErrorDialog("PayHere Configuration Error", configError);
       return;
     }
 
     try {
+      // Create pending record first so server-side notify can verify and grant access.
+      final bool isVoiceTopup = widget.selectedPlan.contains("Voice Top-Up");
+      int minutesAdded = 0;
+      if (isVoiceTopup) {
+        minutesAdded = int.tryParse(
+                widget.selectedDuration.replaceAll(RegExp(r'[^0-9]'), '')) ??
+            0;
+      }
+
+      await FirebaseFirestore.instance.collection("payments").doc(orderId).set({
+        "userId": userId,
+        "orderId": orderId,
+        "paymentId": "",
+        "plan": widget.selectedPlan,
+        "duration": widget.selectedDuration,
+        "amount": widget.price,
+        "currency": "LKR",
+        "type": isVoiceTopup ? "voice_topup" : "subscription",
+        "minutesAdded": minutesAdded,
+        "firstName": firstName,
+        "lastName": lastName,
+        "email": email,
+        "phone": fullPhone,
+        "status": "pending",
+        "verificationStatus": "pending_notify",
+        "createdAt": FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
       // Create PayHere payment request
       Map<String, dynamic> paymentObject = PayHereService.createPaymentRequest(
         orderId: orderId,
@@ -522,6 +491,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       // Debug: Print payment object
       debugPrint("💳 Payment Object: $paymentObject");
+
+      // ✅ NEW: Detailed PayHere configuration debug
+      PayHereService.printDebugInfo(paymentObject);
 
       // Start payment using PayHere SDK
       PayHere.startPayment(
@@ -748,19 +720,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
           .doc(userId)
           .update(updateData);
 
-      // --- Add PAYMENT record ---
-      await FirebaseFirestore.instance.collection("payments").add({
+      await FirebaseFirestore.instance.collection("payments").doc(orderId).set({
         "userId": userId,
         "orderId": orderId,
         "paymentId": paymentId,
+        "status": "paid_client_callback",
         "plan": widget.selectedPlan,
         "duration": widget.selectedDuration,
         "amount": widget.price,
         "currency": "LKR",
-        "status": "paid",
         "unlockedFeatures": unlockedFeatures,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
+        "clientCallbackAt": FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       setState(() {
         isProcessing = false;
@@ -809,20 +781,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Add payment record
-      await FirebaseFirestore.instance.collection("payments").add({
+      await FirebaseFirestore.instance.collection("payments").doc(orderId).set({
         "userId": userId,
         "orderId": orderId,
         "paymentId": paymentId,
+        "status": "paid_client_callback",
         "plan": widget.selectedPlan,
         "duration": widget.selectedDuration,
         "amount": widget.price,
         "currency": "LKR",
-        "status": "paid",
         "type": "voice_topup",
         "minutesAdded": minutesToAdd,
-        "createdAt": FieldValue.serverTimestamp(),
-      });
+        "clientCallbackAt": FieldValue.serverTimestamp(),
+        "updatedAt": FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       setState(() {
         isProcessing = false;
@@ -967,57 +939,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-// -----------------------------------------------------
-//             EXPIRY FORMATTER MM/YY
-// -----------------------------------------------------
-class ExpiryDateFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = "";
-
-    if (digits.length >= 3) {
-      formatted = '${digits.substring(0, 2)}/${digits.substring(2)}';
-    } else {
-      formatted = digits;
-    }
-
-    if (formatted.length > 5) {
-      formatted = formatted.substring(0, 5);
-    }
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-}
-
-// -----------------------------------------------------
-//         CARD NUMBER FORMATTER XXXX XXXX XXXX XXXX
-// -----------------------------------------------------
-class CardNumberInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-    String formatted = '';
-
-    for (int i = 0; i < digits.length; i++) {
-      if (i != 0 && i % 4 == 0) {
-        formatted += ' ';
-      }
-      formatted += digits[i];
-    }
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

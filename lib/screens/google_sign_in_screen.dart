@@ -74,18 +74,20 @@ class _GoogleSignInScreenState extends State<GoogleSignInScreen>
         throw Exception('No user found');
       }
 
-      // Check if user profile exists
+      // Check if user profile is complete (not just an FCM-only doc)
       final existingProfile = await _firebaseService.getUserProfile(user.uid);
+      final isProfileComplete =
+          existingProfile != null && existingProfile.email.isNotEmpty;
 
-      if (existingProfile != null) {
-        // Existing user - go to home
+      if (isProfileComplete) {
+        // Existing user with complete profile - go to home
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
           );
         }
       } else {
-        // New user - go to onboarding
+        // New user or incomplete profile (FCM-only doc) - go to onboarding
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(

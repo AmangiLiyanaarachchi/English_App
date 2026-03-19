@@ -132,6 +132,12 @@ service cloud.firestore {
       // Users can create payment records for themselves
       allow create: if request.auth != null && 
                        request.auth.uid == request.resource.data.userId;
+
+      // Users can update their own payment records (used after PayHere success callback)
+      // Keep ownership immutable so userId cannot be reassigned.
+      allow update: if request.auth != null &&
+                       request.auth.uid == resource.data.userId &&
+                       request.resource.data.userId == resource.data.userId;
     }
   }
 }

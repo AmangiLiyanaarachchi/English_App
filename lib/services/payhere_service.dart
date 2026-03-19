@@ -1,12 +1,64 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 
 class PayHereService {
-  // PayHere Sandbox Credentials - Mobile SDK requires numeric Merchant ID
-  static const String merchantId = "1233181";
-  static const String merchantSecret =
-      "MzA5MjE2Mjk3MjY1NzI0OTg1Mzk0OTQwMjMwMTIyODQzNTY2Mjc=";
-  static const bool isSandbox = true; // Set to false for production
+  // Defaults keep local sandbox testing easy. Live values should come from --dart-define.
+  static const String _defaultSandboxMerchantId = "1233181";
+  static const String _defaultSandboxMerchantSecret =
+  "NDAxMTQ0OTcyMjEwMDkzODIwODIzMzU3MTA2NDgxNTQ5NzM4MjE0";
+
+  static const String _envMerchantId =
+      String.fromEnvironment("PAYHERE_MERCHANT_ID", defaultValue: "");
+  static const String _envMerchantSecret =
+      String.fromEnvironment("PAYHERE_MERCHANT_SECRET", defaultValue: "");
+  static const String _envNotifyUrl =
+      String.fromEnvironment("PAYHERE_NOTIFY_URL", defaultValue: "");
+
+  static const bool isSandbox =
+      bool.fromEnvironment("PAYHERE_SANDBOX", defaultValue: true);
+
+  static String get merchantId {
+    final fromEnv = _envMerchantId.trim();
+    return fromEnv.isNotEmpty ? fromEnv : _defaultSandboxMerchantId;
+  }
+
+  static String get merchantSecret {
+    final fromEnv = _envMerchantSecret.trim();
+    return fromEnv.isNotEmpty ? fromEnv : _defaultSandboxMerchantSecret;
+  }
+
+  static String get notifyUrl {
+    final fromEnv = _envNotifyUrl.trim();
+    return fromEnv.isNotEmpty ? fromEnv : "https://webhook.site/unique-id";
+  }
+
+  static bool get isConfiguredForLive =>
+      merchantId.trim().isNotEmpty && merchantSecret.trim().isNotEmpty;
+
+  static String? validateConfiguration() {
+    if (!isSandbox && !isConfiguredForLive) {
+      return "PayHere live mode is enabled but merchant credentials are missing."
+          " Pass PAYHERE_MERCHANT_ID and PAYHERE_MERCHANT_SECRET via --dart-define.";
+    }
+
+    if (!isSandbox && notifyUrl == "https://webhook.site/unique-id") {
+      return "PayHere live mode requires a real PAYHERE_NOTIFY_URL webhook."
+          " Replace the default webhook.site URL using --dart-define.";
+    }
+
+    return null;
+  }
+
+  // PayHere secrets may be provided as plain text or base64-encoded.
+  static String _normalizeMerchantSecret(String rawSecret) {
+    try {
+      final decoded = utf8.decode(base64.decode(rawSecret));
+      return decoded.trim().isEmpty ? rawSecret : decoded;
+    } catch (_) {
+      return rawSecret;
+    }
+  }
 
   /// Generate MD5 hash for PayHere
   static String generateHash({
@@ -14,8 +66,7 @@ class PayHereService {
     required double amount,
     required String currency,
   }) {
-    // Decode the base64 merchant secret first
-    String decodedSecret = utf8.decode(base64.decode(merchantSecret));
+    String decodedSecret = _normalizeMerchantSecret(merchantSecret);
     String merchantSecretMD5 =
         md5.convert(utf8.encode(decodedSecret)).toString().toUpperCase();
 
@@ -48,7 +99,7 @@ class PayHereService {
     Map<String, dynamic> paymentObject = {
       "sandbox": isSandbox,
       "merchant_id": merchantId,
-      "notify_url": "https://webhook.site/unique-id", // Required field
+      "notify_url": notifyUrl,
       "order_id": orderId,
       "items": planName,
       "amount": amount.toStringAsFixed(2),
@@ -86,16 +137,48 @@ class PayHereService {
     } else if (duration.toLowerCase().contains("month")) {
       switch (planName) {
         case "Community Plan":
-          return 400.00;
+          return duration.toLowerCase().contains("6") ? 2500.00 : 900.00;
         case "AI Agent":
-          return 500.00;
+          return 0.00;
         case "Community + AI Agent":
-          return 800.00;
+          return 0.00;
+        default:
+          return 0.00;
+      }
+    } else if (duration.toLowerCase().contains("credit")) {
+      switch (planName) {
+        case "AI Agent":
+          return duration.contains("2500") ? 3000.00 : 1500.00;
         default:
           return 0.00;
       }
     }
     return 0.00;
+  }
+
+  /// ✅ DEBUG: Print PayHere Configuration & Payment Details
+  static void printDebugInfo(Map<String, dynamic> paymentObject) {
+    if (kDebugMode) {
+      print("=============== PAYHERE PAYMENT DEBUG ===============");
+      print("🔹 CONFIGURATION:");
+      print("   Sandbox Mode: $isSandbox");
+      print("   Merchant ID: $merchantId");
+      print("   Notify URL: $notifyUrl");
+      print(
+          "   Merchant Secret (first 10 chars): ${merchantSecret.substring(0, (merchantSecret.length > 10 ? 10 : merchantSecret.length))}...");
+      print("");
+      print("🔹 PAYMENT OBJECT BEING SENT TO PAYHERE:");
+      paymentObject.forEach((key, value) {
+        if (key == "hash") {
+          print("   $key: ${value.toString().substring(0, 10)}...");
+        } else if (key == "notify_url" || key == "merchant_id") {
+          print("   $key: $value ⭐ (CRITICAL)");
+        } else {
+          print("   $key: $value");
+        }
+      });
+      print("====================================================");
+    }
   }
 
   /// Get unlocked features based on plan

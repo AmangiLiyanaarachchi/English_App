@@ -414,6 +414,7 @@ class _PremiumScreenState extends State<PremiumScreen> {
                                         selectedPlan: selectedPlan,
                                         price: selectedPrice,
                                         selectedDuration: selectedDuration,
+                                        autoLaunchIfProfileComplete: true,
                                       ),
                                     ),
                                   );
@@ -429,8 +430,8 @@ class _PremiumScreenState extends State<PremiumScreen> {
                       ),
                       child: Text(
                         (selectedPlan.isEmpty || selectedDuration.isEmpty)
-                            ? "CONTINUE"
-                            : "CONTINUE — $selectedDuration • LKR ${selectedPrice.toInt()}",
+                          ? "CONTINUE"
+                          : "CONTINUE TO PAYHERE — $selectedDuration • LKR ${selectedPrice.toInt()}",
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,

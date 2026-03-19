@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 
 class AudioManagerService {
   static const MethodChannel _channel =
-      MethodChannel('com.example.english_app/audio');
+          MethodChannel('com.example.english_app/audio');
 
   /// Force enable speaker (loudspeaker) mode on Android
   static Future<bool> setSpeakerOn(bool enabled) async {

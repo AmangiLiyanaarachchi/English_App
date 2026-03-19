@@ -187,7 +187,11 @@ class ChatService {
 
       // Now do all writes
       // Add message
-      transaction.set(messageRef, message.toFirestore());
+      transaction.set(messageRef, {
+        ...message.toFirestore(),
+        'senderName': _auth.currentUser?.displayName ?? 'Global Gate User',
+        'senderPhotoUrl': _auth.currentUser?.photoURL,
+      });
 
       // Update or create chat room
       if (chatRoomSnapshot.exists) {
